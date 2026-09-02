@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-midnight-950: #05040f;
+  --color-midnight-900: #0c0a1f;
+  --color-midnight-800: #14122f;
+  --color-midnight-700: #1d1a45;
+  --color-midnight-600: #292361;
+  --color-nebula-500: #7c5cff;
+  --color-nebula-400: #9b7fff;
+  --color-nebula-300: #bda8ff;
+  --color-aurora-400: #5ee6c8;
+  --color-aurora-300: #8ff2da;
+  --color-moon-100: #f4f2fd;
+  --color-moon-300: #c9c3e8;
+  --color-moon-500: #8f89b3;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--color-midnight-950);
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(124, 92, 255, 0.18), transparent 40%),
+    radial-gradient(circle at 85% 0%, rgba(94, 230, 200, 0.12), transparent 35%),
+    radial-gradient(circle at 50% 100%, rgba(124, 92, 255, 0.1), transparent 45%);
+  color: var(--color-moon-100);
+}
+
+@keyframes totem-wobble {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+@keyframes totem-blur {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.88); }
+}
+
+@keyframes totem-shadow {
+  0%, 100% { transform: scaleX(1); opacity: 0.5; }
+  50% { transform: scaleX(0.8); opacity: 0.3; }
+}
+
+.totem-wobble {
+  animation: totem-wobble 2.2s ease-in-out infinite;
+  transform-origin: 50% 96%;
+}
+
+.totem-blur {
+  animation: totem-blur 0.12s linear infinite;
+  transform-origin: 50% 96%;
+}
+
+.totem-shadow {
+  animation: totem-shadow 0.12s linear infinite;
+}
