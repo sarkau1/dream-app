@@ -9,6 +9,11 @@ const sections = [
     description: 'Work through lessons on reality checks, MILD, WBTB, and dream journaling.',
   },
   {
+    to: '/journal',
+    title: 'Journal',
+    description: 'Log what you recall each morning and build a searchable history of your dreams.',
+  },
+  {
     to: '/forum',
     title: 'Forum',
     description: 'Swap techniques, dream reports, and questions with other dreamers.',
@@ -44,7 +49,7 @@ export default function Home() {
         <SpinningTotem />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {sections.map((section) => (
           <Link
             key={section.to}

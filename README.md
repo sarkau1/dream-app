@@ -1,32 +1,45 @@
-# React + TypeScript + Vite
+# Dream App
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A dream journaling site: register, log in, and post your dreams to a shared feed. Also
+includes lucid-dreaming games, a symbol atlas, a forum, and lessons.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + Vite + TypeScript + Tailwind CSS
+- [Supabase](https://supabase.com) for auth and the `dreams` table (Postgres + Row Level
+  Security)
+- Deployed to GitHub Pages via GitHub Actions
 
-## React Compiler
+## Local setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. `npm install`
+2. Create a free project at [supabase.com](https://supabase.com).
+3. In the Supabase SQL editor, run [`supabase/schema.sql`](supabase/schema.sql) to create the
+   `profiles` and `dreams` tables and their security policies.
+4. Copy `.env.example` to `.env.local` and fill in your project's URL and anon key (Project
+   Settings -> API).
+5. `npm run dev`
 
-## Expanding the Oxlint configuration
+## Scripts
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- `npm run dev` - start the dev server
+- `npm run build` - typecheck and build for production
+- `npm run lint` - run oxlint
+- `npm run vault:build` - regenerate the Obsidian vault mirror for the Dream Walk game's story
+  content (see `scripts/generate-dream-vault.mjs`)
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+## Deployment
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Pushing to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which
+builds the app and publishes it to GitHub Pages. It needs two repository secrets set under
+Settings -> Secrets and variables -> Actions: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+GitHub Pages itself needs to be enabled once under Settings -> Pages -> Source ->
+GitHub Actions.
+
+Every pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (lint + build)
+so changes get checked before merging.
+
+## Contributing
+
+Pull requests welcome. Open an issue or PR describing the change; CI will lint and build it
+automatically.

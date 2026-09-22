@@ -2,14 +2,20 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dreamSignQuestions } from '../../data/dreamSigns'
 import { useProgress } from '../../context/ProgressContext'
+import { useMetaProgress } from '../../context/MetaProgressContext'
 import SpinningTotem from '../../components/SpinningTotem'
+import EssencePop from '../../components/EssencePop'
+
+const ESSENCE_PER_CORRECT = 5
 
 export default function DreamSignQuiz() {
   const { quizBestScore, reportQuizScore } = useProgress()
+  const { earnEssence } = useMetaProgress()
   const [index, setIndex] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
   const [score, setScore] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [essenceEarned, setEssenceEarned] = useState(0)
 
   const question = dreamSignQuestions[index]
   const isLast = index === dreamSignQuestions.length - 1
@@ -25,6 +31,9 @@ export default function DreamSignQuiz() {
   function handleNext() {
     if (isLast) {
       reportQuizScore(score)
+      const earned = score * ESSENCE_PER_CORRECT
+      setEssenceEarned(earned)
+      earnEssence(earned)
       setFinished(true)
       return
     }
@@ -36,6 +45,7 @@ export default function DreamSignQuiz() {
     setIndex(0)
     setSelected(null)
     setScore(0)
+    setEssenceEarned(0)
     setFinished(false)
   }
 
@@ -53,6 +63,9 @@ export default function DreamSignQuiz() {
           {quizBestScore !== null && (
             <p className="mt-2 text-sm text-moon-500">Best score: {quizBestScore}</p>
           )}
+          <div className="mt-4 flex justify-center">
+            <EssencePop amount={essenceEarned} />
+          </div>
           <div className="mt-6 flex justify-center">
             <SpinningTotem />
           </div>

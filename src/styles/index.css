@@ -58,3 +58,77 @@ body {
 .totem-shadow {
   animation: totem-shadow 0.12s linear infinite;
 }
+
+@keyframes essence-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.essence-pop {
+  animation: essence-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes blip-in {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.blip-enter {
+  animation: blip-in 0.15s ease-out both;
+}
+
+@keyframes card-flash-hit {
+  0% { box-shadow: 0 0 0 0 rgba(94, 230, 200, 0.6); }
+  100% { box-shadow: 0 0 0 18px rgba(94, 230, 200, 0); }
+}
+
+.flash-hit {
+  animation: card-flash-hit 0.5s ease-out;
+}
+
+@keyframes card-flash-miss {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.flash-miss {
+  animation: card-flash-miss 0.25s ease-in-out;
+}
+
+.card-flip-scene {
+  perspective: 1000px;
+}
+
+.card-flip-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.card-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.card-flip-face.is-back {
+  transform: rotateY(180deg);
+}
+
+@keyframes dice-rolling {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(90deg) scale(1.08); }
+  50% { transform: rotate(180deg) scale(0.96); }
+  75% { transform: rotate(270deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.dice-rolling {
+  animation: dice-rolling 0.35s linear infinite;
+}
