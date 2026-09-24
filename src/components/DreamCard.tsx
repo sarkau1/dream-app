@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { formatDreamDate } from '../lib/dates'
+import AuthorByline from './AuthorByline'
 import type { DreamPost } from '../types/dream'
 
 // Rough check for whether line-clamp-4 is likely to cut the body off.
@@ -25,6 +26,12 @@ export default function DreamCard({
           : 'border-midnight-700 bg-midnight-900/60'
       }`}
     >
+      {showAuthor && (
+        <div className="mb-3">
+          <AuthorByline dream={dream} />
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-4">
         <Link to={`/dreams/${dream.id}`} className="hover:text-nebula-300">
           <h2 className="text-lg font-semibold text-moon-100">{dream.title}</h2>
@@ -60,10 +67,10 @@ export default function DreamCard({
           Read more<span className="sr-only">: {dream.title}</span> &rarr;
         </Link>
       )}
-      <p className="mt-3 text-xs text-moon-500">
-        {showAuthor && <>{dream.authorName} &middot; </>}
-        dreamt {formatDreamDate(dream.dreamtOn)}
-      </p>
+      {/* The byline already carries the date when the author is shown. */}
+      {!showAuthor && (
+        <p className="mt-3 text-xs text-moon-500">dreamt {formatDreamDate(dream.dreamtOn)}</p>
+      )}
     </li>
   )
 }

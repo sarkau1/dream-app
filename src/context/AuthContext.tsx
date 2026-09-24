@@ -19,10 +19,14 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-async function syncProfile(user: User) {
-  const displayName =
-    (user.user_metadata?.display_name as string | undefined) ?? user.email ?? 'Dreamer'
-  await supabase.from('profiles').upsert({ user_id: user.id, display_name: displayName })
+// Makes sure the user has a profile row, which is where the Dream Feed gets author names from.
+// Creates it if missing and never overwrites an existing one.
+async function ensureProfile(user: User) {
+  // Deliberately no fallback to the email address: display names are visible to every user.
+  const displayName = (user.user_metadata?.display_name as string | undefined)?.trim() || 'Dreamer'
+  await supabase
+    .from('profiles')
+    .upsert({ user_id: user.id, display_name: displayName }, { onConflict: 'user_id', ignoreDuplicates: true })
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -42,8 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession)
-      if (event === 'SIGNED_IN' && newSession?.user) {
-        void syncProfile(newSession.user)
+      // INITIAL_SESSION covers users whose session was restored from a previous visit, who never
+      // go through SIGNED_IN and could otherwise be left without a profile (shown as "Dreamer").
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && newSession?.user) {
+        void ensureProfile(newSession.user)
       }
     })
 

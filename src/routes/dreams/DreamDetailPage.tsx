@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DreamForm from '../../components/DreamForm'
 import { useAuth } from '../../context/AuthContext'
 import { useDreamPosts } from '../../context/DreamPostContext'
-import { formatDreamDate } from '../../lib/dates'
+import AuthorByline from '../../components/AuthorByline'
 import { draftKey } from '../../lib/drafts'
 import type { DreamPost } from '../../types/dream'
 
@@ -96,6 +96,9 @@ export default function DreamDetailPage() {
         />
       ) : (
         <div className="rounded-xl border border-midnight-700 bg-midnight-900/60 p-6">
+          <div className="mb-4">
+            <AuthorByline dream={dream} />
+          </div>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-semibold text-moon-100">{dream.title}</h1>
@@ -143,9 +146,6 @@ export default function DreamDetailPage() {
           )}
 
           <p className="mt-4 whitespace-pre-wrap text-moon-300">{dream.body}</p>
-          <p className="mt-4 text-xs text-moon-500">
-            {dream.authorName} &middot; dreamt {formatDreamDate(dream.dreamtOn)}
-          </p>
           {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
         </div>
       )}
