@@ -58,8 +58,12 @@ export default function RegisterPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-moon-300">Display name</label>
+          <label htmlFor="register-name" className="block text-sm font-medium text-moon-300">
+            Display name
+          </label>
           <input
+            id="register-name"
+            autoComplete="nickname"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="How should others see you?"
@@ -68,9 +72,13 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-moon-300">Email</label>
+          <label htmlFor="register-email" className="block text-sm font-medium text-moon-300">
+            Email
+          </label>
           <input
+            id="register-email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
@@ -79,9 +87,13 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-moon-300">Password</label>
+          <label htmlFor="register-password" className="block text-sm font-medium text-moon-300">
+            Password
+          </label>
           <input
+            id="register-password"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}

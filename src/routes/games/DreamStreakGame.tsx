@@ -75,10 +75,10 @@ export default function DreamStreakGame() {
       </div>
 
       <Link
-        to="/journal"
+        to="/journal/log"
         className="inline-block text-sm text-nebula-300 hover:text-nebula-200"
       >
-        View full dream journal &rarr;
+        View recall log &rarr;
       </Link>
 
       <div>

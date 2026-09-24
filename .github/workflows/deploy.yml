@@ -29,6 +29,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
+      # GitHub Pages has no SPA rewrites: serve the app for unknown paths too, so refreshing or
+      # opening a deep link like /journal loads the router instead of GitHub's 404 page.
+      - run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

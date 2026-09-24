@@ -1,7 +1,9 @@
 # Dream App
 
-A dream journaling site: register, log in, and post your dreams to a shared feed. Also
-includes lucid-dreaming games, a symbol atlas, a forum, and lessons.
+A dream journaling site. Register, keep a journal of your dreams (private by default), and
+share the ones you choose to a community feed. Tag the symbols you notice and the Dream Web
+shows how your dreams connect. Logging a lucid dream earns Dream Essence (25 per lucid dream,
+derived from your saved dreams).
 
 ## Stack
 
@@ -25,8 +27,6 @@ includes lucid-dreaming games, a symbol atlas, a forum, and lessons.
 - `npm run dev` - start the dev server
 - `npm run build` - typecheck and build for production
 - `npm run lint` - run oxlint
-- `npm run vault:build` - regenerate the Obsidian vault mirror for the Dream Walk game's story
-  content (see `scripts/generate-dream-vault.mjs`)
 
 ## Deployment
 

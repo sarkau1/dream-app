@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, type Location } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  // Set by ProtectedRoute when it bounced the user here, so we can send them back afterwards.
+  const from = (location.state as { from?: Location } | null)?.from
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,7 +27,7 @@ export default function LoginPage() {
       setError(error)
       return
     }
-    navigate('/dreams')
+    navigate(from ? `${from.pathname}${from.search}` : '/dreams', { replace: true })
   }
 
   return (
@@ -33,9 +36,13 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-moon-300">Email</label>
+          <label htmlFor="login-email" className="block text-sm font-medium text-moon-300">
+            Email
+          </label>
           <input
+            id="login-email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
@@ -44,9 +51,13 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-moon-300">Password</label>
+          <label htmlFor="login-password" className="block text-sm font-medium text-moon-300">
+            Password
+          </label>
           <input
+            id="login-password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
