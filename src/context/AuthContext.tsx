@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/auth-js'
 import { clearAllDrafts } from '../lib/drafts'
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
 
