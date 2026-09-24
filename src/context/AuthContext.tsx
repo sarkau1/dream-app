@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { clearAllDrafts } from '../lib/drafts'
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
 
 const NOT_CONFIGURED_ERROR =
@@ -12,6 +13,8 @@ interface AuthContextValue {
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>
+  updatePassword: (password: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -70,12 +73,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    // Drafts can hold private dreams; don't leave them behind on a possibly shared browser.
+    clearAllDrafts()
     await supabase.auth.signOut()
+  }
+
+  async function requestPasswordReset(email: string) {
+    if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
+
+    // The email link signs the user in with a recovery session and lands on this page, which
+    // asks for the new password. BASE_URL keeps it working under the GitHub Pages subpath.
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}reset-password`
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+    return { error: error?.message ?? null }
+  }
+
+  async function updatePassword(password: string) {
+    if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
+
+    const { error } = await supabase.auth.updateUser({ password })
+    return { error: error?.message ?? null }
   }
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, loading, signUp, signIn, signOut }}
+      value={{
+        user: session?.user ?? null,
+        session,
+        loading,
+        signUp,
+        signIn,
+        signOut,
+        requestPasswordReset,
+        updatePassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

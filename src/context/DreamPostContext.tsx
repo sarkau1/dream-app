@@ -1,14 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
 import { useAuth } from './AuthContext'
-import type { DreamMood, DreamPost } from '../types/dream'
+import type { DreamInput, DreamMood, DreamPost } from '../types/dream'
 
 const NOT_CONFIGURED_ERROR =
   'This site is not connected to Supabase yet. See README.md to set it up.'
 const LOGGED_OUT_ERROR = 'Log in to read dreams.'
 const PAGE_SIZE = 10
 
-const DREAM_COLUMNS = 'id, user_id, title, body, mood, symbols, is_private, created_at'
+const DREAM_COLUMNS = 'id, user_id, title, body, mood, symbols, is_private, dreamt_on, created_at'
 
 interface DreamRow {
   id: string
@@ -18,7 +18,19 @@ interface DreamRow {
   mood: string | null
   symbols: string[]
   is_private: boolean
+  dreamt_on: string
   created_at: string
+}
+
+function toRow(input: DreamInput) {
+  return {
+    title: input.title,
+    body: input.body,
+    mood: input.mood,
+    symbols: input.symbols,
+    is_private: input.isPrivate,
+    dreamt_on: input.dreamtOn,
+  }
 }
 
 async function toDreamPosts(rows: DreamRow[]): Promise<DreamPost[]> {
@@ -38,6 +50,7 @@ async function toDreamPosts(rows: DreamRow[]): Promise<DreamPost[]> {
     mood: (row.mood as DreamMood | null) ?? null,
     symbols: row.symbols ?? [],
     isPrivate: row.is_private,
+    dreamtOn: row.dreamt_on,
     createdAt: row.created_at,
   }))
 }
@@ -50,21 +63,8 @@ interface DreamPostContextValue {
   error: string | null
   refresh: () => Promise<void>
   loadMore: () => Promise<void>
-  createDream: (
-    title: string,
-    body: string,
-    mood: DreamMood | null,
-    symbols: string[],
-    isPrivate: boolean,
-  ) => Promise<{ error: string | null }>
-  updateDream: (
-    id: string,
-    title: string,
-    body: string,
-    mood: DreamMood | null,
-    symbols: string[],
-    isPrivate: boolean,
-  ) => Promise<{ error: string | null }>
+  createDream: (input: DreamInput) => Promise<{ error: string | null }>
+  updateDream: (id: string, input: DreamInput) => Promise<{ error: string | null }>
   deleteDream: (id: string) => Promise<{ error: string | null }>
   getDream: (id: string) => Promise<{ dream: DreamPost | null; error: string | null }>
   myDreams: DreamPost[]
@@ -101,6 +101,8 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       .from('dreams')
       .select(DREAM_COLUMNS)
       .eq('user_id', userId)
+      // The journal is a diary: order by the night dreamt, newest first.
+      .order('dreamt_on', { ascending: false })
       .order('created_at', { ascending: false })
 
     setMyDreamsError(error?.message ?? null)
@@ -182,24 +184,11 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     void refresh()
   }, [refresh])
 
-  async function createDream(
-    title: string,
-    body: string,
-    mood: DreamMood | null,
-    symbols: string[],
-    isPrivate: boolean,
-  ) {
+  async function createDream(input: DreamInput) {
     if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
     if (!userId) return { error: 'You must be logged in to post a dream.' }
 
-    const { error } = await supabase.from('dreams').insert({
-      user_id: userId,
-      title,
-      body,
-      mood,
-      symbols,
-      is_private: isPrivate,
-    })
+    const { error } = await supabase.from('dreams').insert({ user_id: userId, ...toRow(input) })
     if (error) return { error: error.message }
 
     await refresh()
@@ -207,20 +196,13 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     return { error: null }
   }
 
-  async function updateDream(
-    id: string,
-    title: string,
-    body: string,
-    mood: DreamMood | null,
-    symbols: string[],
-    isPrivate: boolean,
-  ) {
+  async function updateDream(id: string, input: DreamInput) {
     if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
     if (!userId) return { error: 'You must be logged in to edit a dream.' }
 
     const { error } = await supabase
       .from('dreams')
-      .update({ title, body, mood, symbols, is_private: isPrivate })
+      .update(toRow(input))
       .eq('id', id)
       .eq('user_id', userId)
     if (error) return { error: error.message }

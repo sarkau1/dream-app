@@ -7,6 +7,8 @@ import DreamJournalPage from './routes/journal/DreamJournalPage'
 import DreamWeb from './routes/web/DreamWeb'
 import RegisterPage from './routes/auth/RegisterPage'
 import LoginPage from './routes/auth/LoginPage'
+import ForgotPasswordPage from './routes/auth/ForgotPasswordPage'
+import ResetPasswordPage from './routes/auth/ResetPasswordPage'
 import DreamFeed from './routes/dreams/DreamFeed'
 import NewDreamPage from './routes/dreams/NewDreamPage'
 import DreamDetailPage from './routes/dreams/DreamDetailPage'
@@ -26,6 +28,8 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/dreams" element={<DreamFeed />} />
               <Route
                 path="/dreams/new"

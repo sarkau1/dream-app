@@ -1,10 +1,13 @@
 import { useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import DreamForm from '../../components/DreamForm'
+import { useAuth } from '../../context/AuthContext'
 import { useDreamPosts } from '../../context/DreamPostContext'
+import { draftKey } from '../../lib/drafts'
 import { ESSENCE_LUCID_DREAM } from '../../lib/essence'
 
 export default function NewDreamPage() {
+  const { user } = useAuth()
   const { createDream } = useDreamPosts()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -29,20 +32,18 @@ export default function NewDreamPage() {
       </div>
 
       <DreamForm
-        initialValues={
-          fromJournal
-            ? { title: '', body: '', mood: null, symbols: [], isPrivate: true }
-            : undefined
-        }
+        initialValues={{ isPrivate: fromJournal }}
+        // ProtectedRoute guarantees a user here.
+        draftKey={user ? draftKey(user.id, null) : undefined}
         submitLabel="Save dream"
         submittingLabel="Saving..."
-        onSubmit={async ({ title, body, mood, symbols, isPrivate }) => {
-          const result = await createDream(title, body, mood, symbols, isPrivate)
+        onSubmit={async (values) => {
+          const result = await createDream(values)
           if (!result.error) {
             // The total itself is derived from saved dreams (see lib/essence); this only drives
             // the "+N" notice on the page we land on.
-            const essenceEarned = mood === 'Lucid' ? ESSENCE_LUCID_DREAM : 0
-            saved.current = { isPrivate, essenceEarned }
+            const essenceEarned = values.mood === 'Lucid' ? ESSENCE_LUCID_DREAM : 0
+            saved.current = { isPrivate: values.isPrivate, essenceEarned }
           }
           return result
         }}

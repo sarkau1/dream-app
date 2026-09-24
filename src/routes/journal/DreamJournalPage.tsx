@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import DreamCard from '../../components/DreamCard'
 import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
 import { useDreamPosts } from '../../context/DreamPostContext'
+import { formatDreamMonth } from '../../lib/dates'
 import type { DreamPost } from '../../types/dream'
 
 type JournalFilter = 'all' | 'private' | 'shared'
@@ -38,14 +39,7 @@ function ShareToggle({ dream }: { dream: DreamPost }) {
   async function toggle() {
     setSaving(true)
     setError(null)
-    const { error } = await updateDream(
-      dream.id,
-      dream.title,
-      dream.body,
-      dream.mood,
-      dream.symbols,
-      shared,
-    )
+    const { error } = await updateDream(dream.id, { ...dream, isPrivate: shared })
     if (error) setError(error)
     setSaving(false)
   }
@@ -112,10 +106,7 @@ export default function DreamJournalPage() {
 
     const groups = new Map<string, DreamPost[]>()
     for (const dream of matches) {
-      const month = new Date(dream.createdAt).toLocaleDateString(undefined, {
-        month: 'long',
-        year: 'numeric',
-      })
+      const month = formatDreamMonth(dream.dreamtOn)
       groups.set(month, [...(groups.get(month) ?? []), dream])
     }
     return [...groups]

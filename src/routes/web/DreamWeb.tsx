@@ -11,7 +11,7 @@ function toGraphEntries(dreams: DreamPost[]): SampleDreamEntry[] {
   return dreams
     .filter((dream) => dream.symbols.length > 0)
     .map((dream) => ({
-      date: dream.createdAt.slice(0, 10),
+      date: dream.dreamtOn,
       note: dream.title,
       symbols: dream.symbols,
     }))

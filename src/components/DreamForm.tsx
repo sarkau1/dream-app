@@ -1,21 +1,32 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
-import { DREAM_MOODS, type DreamMood } from '../types/dream'
-
-export interface DreamFormValues {
-  title: string
-  body: string
-  mood: DreamMood | null
-  symbols: string[]
-  isPrivate: boolean
-}
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
+import { todayLocal } from '../lib/dates'
+import { DREAM_MOODS, type DreamInput, type DreamMood } from '../types/dream'
 
 interface DreamFormProps {
-  initialValues?: DreamFormValues
+  initialValues?: Partial<DreamInput>
+  /** localStorage key to autosave unsaved changes under (see lib/drafts). */
+  draftKey?: string
   submitLabel: string
   submittingLabel: string
-  onSubmit: (values: DreamFormValues) => Promise<{ error: string | null }>
+  onSubmit: (values: DreamInput) => Promise<{ error: string | null }>
   onSuccess: () => void
   onCancel?: () => void
+}
+
+function withDefaults(values?: Partial<DreamInput>): DreamInput {
+  return {
+    title: values?.title ?? '',
+    body: values?.body ?? '',
+    mood: values?.mood ?? null,
+    symbols: values?.symbols ?? [],
+    isPrivate: values?.isPrivate ?? false,
+    dreamtOn: values?.dreamtOn ?? todayLocal(),
+  }
+}
+
+function sameValues(a: DreamInput, b: DreamInput) {
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 function chipClass(active: boolean) {
@@ -28,20 +39,49 @@ function chipClass(active: boolean) {
 
 export default function DreamForm({
   initialValues,
+  draftKey,
   submitLabel,
   submittingLabel,
   onSubmit,
   onSuccess,
   onCancel,
 }: DreamFormProps) {
-  const [title, setTitle] = useState(initialValues?.title ?? '')
-  const [body, setBody] = useState(initialValues?.body ?? '')
-  const [mood, setMood] = useState<DreamMood | null>(initialValues?.mood ?? null)
-  const [symbols, setSymbols] = useState<string[]>(initialValues?.symbols ?? [])
+  // Captured once so the dirty check below compares against what the form opened with.
+  const [initial] = useState(() => withDefaults(initialValues))
+  const [restoredDraft] = useState(() => (draftKey ? loadDraft(draftKey) : null))
+  const [showDraftNotice, setShowDraftNotice] = useState(restoredDraft !== null)
+  const start = restoredDraft ? withDefaults(restoredDraft) : initial
+
+  const [title, setTitle] = useState(start.title)
+  const [body, setBody] = useState(start.body)
+  const [mood, setMood] = useState<DreamMood | null>(start.mood)
+  const [symbols, setSymbols] = useState<string[]>(start.symbols)
   const [symbolInput, setSymbolInput] = useState('')
-  const [isPrivate, setIsPrivate] = useState(initialValues?.isPrivate ?? false)
+  const [isPrivate, setIsPrivate] = useState(start.isPrivate)
+  const [dreamtOn, setDreamtOn] = useState(start.dreamtOn)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const values: DreamInput = { title, body, mood, symbols, isPrivate, dreamtOn }
+  const valuesJson = JSON.stringify(values)
+
+  // Autosave while the form differs from where it started; drop the draft once it doesn't.
+  useEffect(() => {
+    if (!draftKey) return
+    const current = JSON.parse(valuesJson) as DreamInput
+    if (sameValues(current, initial)) clearDraft(draftKey)
+    else saveDraft(draftKey, current)
+  }, [draftKey, valuesJson, initial])
+
+  function discardDraft() {
+    setTitle(initial.title)
+    setBody(initial.body)
+    setMood(initial.mood)
+    setSymbols(initial.symbols)
+    setIsPrivate(initial.isPrivate)
+    setDreamtOn(initial.dreamtOn)
+    setShowDraftNotice(false)
+  }
 
   function addSymbol() {
     const value = symbolInput.trim()
@@ -70,18 +110,44 @@ export default function DreamForm({
 
     setSubmitting(true)
     setError(null)
-    const { error } = await onSubmit({ title: title.trim(), body: body.trim(), mood, symbols, isPrivate })
+    const { error } = await onSubmit({ ...values, title: title.trim(), body: body.trim() })
     setSubmitting(false)
 
     if (error) {
+      // The draft is still saved, so nothing is lost if the user gives up and comes back later.
       setError(error)
       return
     }
+    if (draftKey) clearDraft(draftKey)
     onSuccess()
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {showDraftNotice && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-aurora-400/30 bg-aurora-400/10 px-4 py-2 text-sm text-aurora-300">
+          <span>Restored your unsaved draft.</span>
+          <button type="button" onClick={discardDraft} className="underline hover:text-aurora-200">
+            Discard draft
+          </button>
+        </div>
+      )}
+
+      <div>
+        <label htmlFor="dream-date" className="block text-sm font-medium text-moon-300">
+          Date of the dream
+        </label>
+        <input
+          id="dream-date"
+          type="date"
+          value={dreamtOn}
+          max={todayLocal()}
+          required
+          onChange={(e) => setDreamtOn(e.target.value)}
+          className="mt-1 rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 focus:border-nebula-400 focus:outline-none"
+        />
+      </div>
+
       <div>
         <label htmlFor="dream-title" className="block text-sm font-medium text-moon-300">
           Title

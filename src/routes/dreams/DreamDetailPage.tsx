@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DreamForm from '../../components/DreamForm'
 import { useAuth } from '../../context/AuthContext'
 import { useDreamPosts } from '../../context/DreamPostContext'
+import { formatDreamDate } from '../../lib/dates'
+import { draftKey } from '../../lib/drafts'
 import type { DreamPost } from '../../types/dream'
 
 export default function DreamDetailPage() {
@@ -80,12 +82,12 @@ export default function DreamDetailPage() {
             mood: dream.mood,
             symbols: dream.symbols,
             isPrivate: dream.isPrivate,
+            dreamtOn: dream.dreamtOn,
           }}
+          draftKey={user ? draftKey(user.id, dream.id) : undefined}
           submitLabel="Save changes"
           submittingLabel="Saving..."
-          onSubmit={({ title, body, mood, symbols, isPrivate }) =>
-            updateDream(dream.id, title, body, mood, symbols, isPrivate)
-          }
+          onSubmit={(values) => updateDream(dream.id, values)}
           onSuccess={() => {
             setEditing(false)
             getDream(dream.id).then(({ dream }) => setDream(dream))
@@ -142,7 +144,7 @@ export default function DreamDetailPage() {
 
           <p className="mt-4 whitespace-pre-wrap text-moon-300">{dream.body}</p>
           <p className="mt-4 text-xs text-moon-500">
-            {dream.authorName} &middot; {new Date(dream.createdAt).toLocaleString()}
+            {dream.authorName} &middot; dreamt {formatDreamDate(dream.dreamtOn)}
           </p>
           {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
         </div>

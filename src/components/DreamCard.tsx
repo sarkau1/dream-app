@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { formatDreamDate } from '../lib/dates'
 import type { DreamPost } from '../types/dream'
 
 // Rough check for whether line-clamp-4 is likely to cut the body off.
@@ -61,7 +62,7 @@ export default function DreamCard({
       )}
       <p className="mt-3 text-xs text-moon-500">
         {showAuthor && <>{dream.authorName} &middot; </>}
-        {new Date(dream.createdAt).toLocaleString()}
+        dreamt {formatDreamDate(dream.dreamtOn)}
       </p>
     </li>
   )

@@ -15,13 +15,20 @@ create table if not exists public.dreams (
   mood text,
   symbols text[] not null default '{}',
   is_private boolean not null default false,
+  -- The night the dream happened, which can be earlier than when it was written down.
+  dreamt_on date not null default current_date,
   created_at timestamptz not null default now()
 );
 
--- Safe to re-run on a database created before mood/symbols/is_private existed.
+-- Safe to re-run on a database created before mood/symbols/is_private/dreamt_on existed.
 alter table public.dreams add column if not exists mood text;
 alter table public.dreams add column if not exists symbols text[] not null default '{}';
 alter table public.dreams add column if not exists is_private boolean not null default false;
+alter table public.dreams add column if not exists dreamt_on date;
+-- Backfill existing rows from when they were posted, then lock the column down.
+update public.dreams set dreamt_on = created_at::date where dreamt_on is null;
+alter table public.dreams alter column dreamt_on set default current_date;
+alter table public.dreams alter column dreamt_on set not null;
 
 alter table public.profiles enable row level security;
 alter table public.dreams enable row level security;
