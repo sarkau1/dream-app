@@ -3,7 +3,14 @@ import type { DreamGraph, DreamGraphNode } from '../types/dreamNetwork'
 
 interface Props {
   graph: DreamGraph
+  /** Called when a node is clicked or tapped (not dragged). */
+  onNodeClick?: (node: DreamGraphNode) => void
 }
+
+type Gesture =
+  | { kind: 'node'; node: DreamGraphNode; downX: number; downY: number; moved: boolean }
+  | { kind: 'pan'; startX: number; startY: number; camX: number; camY: number }
+  | { kind: 'pinch'; startDist: number; startZoom: number; worldX: number; worldY: number }
 
 interface Camera {
   zoom: number
@@ -32,21 +39,35 @@ const ENTRY_GLOW = 'rgba(94, 230, 200, 0.45)'
 const EDGE_COLOR = 'rgba(201, 195, 232, 0.14)'
 const EDGE_COLOR_ACTIVE = 'rgba(191, 168, 255, 0.85)'
 
+const MIN_ZOOM = 0.15
+const MAX_ZOOM = 4
+// How far a pointer can wander (in CSS px) and still count as a click rather than a drag.
+const CLICK_SLOP = 5
+
+function clampZoom(zoom: number) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom))
+}
+
 function nodeRadius(node: DreamGraphNode) {
   const base = node.type === 'symbol' ? 6 : 3.5
   return base + Math.sqrt(node.degree) * 2.2
 }
 
-export default function DreamNetworkGraph({ graph }: Props) {
+export default function DreamNetworkGraph({ graph, onNodeClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const nodesRef = useRef<DreamGraphNode[]>(graph.nodes)
   const cameraRef = useRef<Camera>({ zoom: 1, panX: 0, panY: 0 })
   const alphaRef = useRef(1)
   const hoveredRef = useRef<DreamGraphNode | null>(null)
-  const draggingRef = useRef<{ node: DreamGraphNode } | { pan: true; startX: number; startY: number; camX: number; camY: number } | null>(null)
+  const gestureRef = useRef<Gesture | null>(null)
   const sizeRef = useRef({ width: 0, height: 0 })
   const [tooltip, setTooltip] = useState<Tooltip | null>(null)
+  // Kept in a ref so a new callback doesn't restart the simulation effect below.
+  const onNodeClickRef = useRef(onNodeClick)
+  useEffect(() => {
+    onNodeClickRef.current = onNodeClick
+  }, [onNodeClick])
 
   // A new graph comes in whenever the dreams change. Nodes that were already on screen keep their
   // positions so editing one dream nudges the layout instead of scattering it; only a graph with
@@ -77,6 +98,8 @@ export default function DreamNetworkGraph({ graph }: Props) {
     // Once the layout has settled, only redraw after something visible changed (hover, drag,
     // pan, zoom, resize) instead of repainting an unchanged canvas every frame.
     let dirty = true
+    // Every pointer currently down (mouse, pen or finger), by pointerId, in client coordinates.
+    const pointers = new Map<number, { x: number; y: number }>()
     const nodeById = new Map(nodesRef.current.map((n) => [n.id, n]))
 
     function resize() {
@@ -255,42 +278,93 @@ export default function DreamNetworkGraph({ graph }: Props) {
       return closest
     }
 
-    function handlePointerDown(e: PointerEvent) {
+    function localPoint(clientX: number, clientY: number) {
       const rect = canvas.getBoundingClientRect()
-      const sx = e.clientX - rect.left
-      const sy = e.clientY - rect.top
+      return { x: clientX - rect.left, y: clientY - rect.top }
+    }
+
+    // Two fingers down: zoom by how far apart they are, keeping the world point that was under
+    // their midpoint under it as they move.
+    function pinchState() {
+      const [a, b] = [...pointers.values()]
+      const mid = localPoint((a.x + b.x) / 2, (a.y + b.y) / 2)
+      return { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid }
+    }
+
+    function releaseNode() {
+      const gesture = gestureRef.current
+      if (gesture?.kind === 'node') gesture.node.pinned = false
+    }
+
+    function handlePointerDown(e: PointerEvent) {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      canvas.setPointerCapture(e.pointerId)
+
+      if (pointers.size === 2) {
+        releaseNode()
+        const { dist, mid } = pinchState()
+        const world = screenToWorld(mid.x, mid.y)
+        gestureRef.current = {
+          kind: 'pinch',
+          startDist: dist,
+          startZoom: cameraRef.current.zoom,
+          worldX: world.x,
+          worldY: world.y,
+        }
+        hoveredRef.current = null
+        setTooltip(null)
+        return
+      }
+      if (pointers.size > 2) return
+
+      const { x: sx, y: sy } = localPoint(e.clientX, e.clientY)
       const node = pickNode(sx, sy)
       if (node) {
         node.pinned = true
-        draggingRef.current = { node }
+        gestureRef.current = { kind: 'node', node, downX: e.clientX, downY: e.clientY, moved: false }
       } else {
         const cam = cameraRef.current
-        draggingRef.current = { pan: true, startX: e.clientX, startY: e.clientY, camX: cam.panX, camY: cam.panY }
+        gestureRef.current = { kind: 'pan', startX: e.clientX, startY: e.clientY, camX: cam.panX, camY: cam.panY }
       }
-      canvas.setPointerCapture(e.pointerId)
     }
 
     function handlePointerMove(e: PointerEvent) {
-      const rect = canvas.getBoundingClientRect()
-      const sx = e.clientX - rect.left
-      const sy = e.clientY - rect.top
-      const drag = draggingRef.current
+      if (pointers.has(e.pointerId)) {
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      }
+      const { x: sx, y: sy } = localPoint(e.clientX, e.clientY)
+      const gesture = gestureRef.current
       dirty = true
 
-      if (drag && 'node' in drag) {
-        const world = screenToWorld(sx, sy)
-        drag.node.x = world.x
-        drag.node.y = world.y
-        drag.node.vx = 0
-        drag.node.vy = 0
-        alphaRef.current = Math.max(alphaRef.current, 0.3)
-        setTooltip({ node: drag.node, screenX: sx, screenY: sy })
+      if (gesture?.kind === 'pinch') {
+        if (pointers.size < 2) return
+        const { dist, mid } = pinchState()
+        const cam = cameraRef.current
+        cam.zoom = clampZoom(gesture.startZoom * (dist / gesture.startDist))
+        const { width, height } = sizeRef.current
+        cam.panX = (mid.x - width / 2) / cam.zoom - gesture.worldX
+        cam.panY = (mid.y - height / 2) / cam.zoom - gesture.worldY
         return
       }
-      if (drag && 'pan' in drag) {
+      if (gesture?.kind === 'node') {
+        // Small wobbles while clicking shouldn't move the node or count as a drag.
+        if (!gesture.moved && Math.hypot(e.clientX - gesture.downX, e.clientY - gesture.downY) < CLICK_SLOP) {
+          return
+        }
+        gesture.moved = true
+        const world = screenToWorld(sx, sy)
+        gesture.node.x = world.x
+        gesture.node.y = world.y
+        gesture.node.vx = 0
+        gesture.node.vy = 0
+        alphaRef.current = Math.max(alphaRef.current, 0.3)
+        setTooltip({ node: gesture.node, screenX: sx, screenY: sy })
+        return
+      }
+      if (gesture?.kind === 'pan') {
         const cam = cameraRef.current
-        cam.panX = drag.camX + (e.clientX - drag.startX) / cam.zoom
-        cam.panY = drag.camY + (e.clientY - drag.startY) / cam.zoom
+        cam.panX = gesture.camX + (e.clientX - gesture.startX) / cam.zoom
+        cam.panY = gesture.camY + (e.clientY - gesture.startY) / cam.zoom
         return
       }
 
@@ -300,24 +374,40 @@ export default function DreamNetworkGraph({ graph }: Props) {
       canvas.style.cursor = node ? 'pointer' : 'grab'
     }
 
-    function handlePointerUp(e: PointerEvent) {
-      const drag = draggingRef.current
-      if (drag && 'node' in drag) {
-        drag.node.pinned = false
-      }
-      draggingRef.current = null
+    function endPointer(e: PointerEvent, cancelled: boolean) {
+      pointers.delete(e.pointerId)
       if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId)
+
+      const gesture = gestureRef.current
+      if (gesture?.kind === 'pinch') {
+        // Lifting one finger ends the pinch; the other one doesn't start a pan mid-gesture.
+        if (pointers.size < 2) gestureRef.current = null
+        return
+      }
+      releaseNode()
+      gestureRef.current = null
+      if (!cancelled && gesture?.kind === 'node' && !gesture.moved) {
+        onNodeClickRef.current?.(gesture.node)
+      }
+    }
+
+    function handlePointerUp(e: PointerEvent) {
+      endPointer(e, false)
+    }
+
+    // The browser can cancel a drag (touch scroll, alt-tab); without this the node stays pinned.
+    function handlePointerCancel(e: PointerEvent) {
+      endPointer(e, true)
     }
 
     function handleWheel(e: WheelEvent) {
       e.preventDefault()
       dirty = true
       const cam = cameraRef.current
-      const rect = canvas.getBoundingClientRect()
-      const before = screenToWorld(e.clientX - rect.left, e.clientY - rect.top)
-      const factor = Math.exp(-e.deltaY * 0.001)
-      cam.zoom = Math.min(4, Math.max(0.15, cam.zoom * factor))
-      const after = screenToWorld(e.clientX - rect.left, e.clientY - rect.top)
+      const { x, y } = localPoint(e.clientX, e.clientY)
+      const before = screenToWorld(x, y)
+      cam.zoom = clampZoom(cam.zoom * Math.exp(-e.deltaY * 0.001))
+      const after = screenToWorld(x, y)
       cam.panX += after.x - before.x
       cam.panY += after.y - before.y
     }
@@ -325,8 +415,7 @@ export default function DreamNetworkGraph({ graph }: Props) {
     canvas.addEventListener('pointerdown', handlePointerDown)
     canvas.addEventListener('pointermove', handlePointerMove)
     canvas.addEventListener('pointerup', handlePointerUp)
-    // The browser can cancel a drag (touch scroll, alt-tab); without this the node stays pinned.
-    canvas.addEventListener('pointercancel', handlePointerUp)
+    canvas.addEventListener('pointercancel', handlePointerCancel)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
 
     raf = requestAnimationFrame(tick)
@@ -334,10 +423,12 @@ export default function DreamNetworkGraph({ graph }: Props) {
     return () => {
       cancelAnimationFrame(raf)
       resizeObserver.disconnect()
+      pointers.clear()
+      gestureRef.current = null
       canvas.removeEventListener('pointerdown', handlePointerDown)
       canvas.removeEventListener('pointermove', handlePointerMove)
       canvas.removeEventListener('pointerup', handlePointerUp)
-      canvas.removeEventListener('pointercancel', handlePointerUp)
+      canvas.removeEventListener('pointercancel', handlePointerCancel)
       canvas.removeEventListener('wheel', handleWheel)
     }
   }, [graph])
@@ -360,6 +451,11 @@ export default function DreamNetworkGraph({ graph }: Props) {
               <p className="font-medium text-aurora-300">{tooltip.node.date}</p>
               <p className="mt-1 text-moon-300">{tooltip.node.note}</p>
             </>
+          )}
+          {onNodeClick && (
+            <p className="mt-1 text-moon-500">
+              {tooltip.node.type === 'symbol' ? 'Click to see these dreams' : 'Click to open'}
+            </p>
           )}
         </div>
       )}

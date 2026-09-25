@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { buildDreamGraph } from '../../lib/buildDreamGraph'
 import DreamNetworkGraph from '../../components/DreamNetworkGraph'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
-import type { DreamGraphEntry } from '../../types/dreamNetwork'
+import type { DreamGraphEntry, DreamGraphNode } from '../../types/dreamNetwork'
 import type { DreamPost } from '../../types/dream'
 
 function toGraphEntries(dreams: DreamPost[]): DreamGraphEntry[] {
@@ -21,6 +21,7 @@ function toGraphEntries(dreams: DreamPost[]): DreamGraphEntry[] {
 export default function DreamWeb() {
   const { user, loading: authLoading } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
+  const navigate = useNavigate()
 
   const myEntries = useMemo(() => toGraphEntries(myDreams), [myDreams])
   // Rebuild only when something the graph shows changes: sharing or unsharing a dream hands
@@ -33,6 +34,12 @@ export default function DreamWeb() {
 
   const entryCount = graph.nodes.filter((n) => n.type === 'entry').length
   const symbolCount = graph.nodes.filter((n) => n.type === 'symbol').length
+
+  // A night opens that dream; a symbol opens the journal searched for it.
+  function openNode(node: DreamGraphNode) {
+    if (node.type === 'entry' && node.dreamId) navigate(`/dreams/${node.dreamId}`)
+    else if (node.type === 'symbol') navigate(`/journal?q=${encodeURIComponent(node.label)}`)
+  }
 
   let emptyMessage = null
   if (!authLoading && !user) {
@@ -78,10 +85,10 @@ export default function DreamWeb() {
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-nebula-400" /> {symbolCount} symbols
             </span>
-            <span>Drag nodes to rearrange · scroll to zoom · drag background to pan</span>
+            <span>Click a node to open it · drag to rearrange · scroll or pinch to zoom · drag background to pan</span>
           </div>
 
-          <DreamNetworkGraph graph={graph} />
+          <DreamNetworkGraph graph={graph} onNodeClick={openNode} />
         </>
       )}
     </div>

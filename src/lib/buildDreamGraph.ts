@@ -31,7 +31,7 @@ export function buildDreamGraph(entries: DreamGraphEntry[]): DreamGraph {
   for (const entry of entries) {
     // Keyed by dream, not by date: two dreams from the same night are two nodes.
     const entryId = `entry:${entry.id}`
-    nodes.set(entryId, makeNode(entryId, 'entry', entry.date, { date: entry.date, note: entry.note }))
+    nodes.set(entryId, makeNode(entryId, 'entry', entry.date, { dreamId: entry.id, date: entry.date, note: entry.note }))
     entrySymbols.set(entryId, new Set())
 
     for (const symbol of entry.symbols) {

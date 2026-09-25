@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import DreamCard from '../../components/DreamCard'
 import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
 import { useDreamPosts } from '../../context/useDreamPosts'
@@ -81,7 +81,9 @@ function ShareToggle({ dream }: { dream: DreamPost }) {
 
 export default function DreamJournalPage() {
   const { myDreams, loadingMyDreams, myDreamsError } = useDreamPosts()
-  const [query, setQuery] = useState('')
+  // ?q= prefills the search, e.g. when a symbol is clicked in the Dream Web.
+  const [searchParams] = useSearchParams()
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
   const [filter, setFilter] = useState<JournalFilter>('all')
 
   const stats = useMemo(

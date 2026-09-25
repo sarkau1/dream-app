@@ -1,6 +1,8 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useDreamPosts } from '../context/useDreamPosts'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import { todayLocal } from '../lib/dates'
+import { symbolsByFrequency } from '../lib/symbols'
 import {
   DREAM_MOODS,
   MAX_BODY_LENGTH,
@@ -9,6 +11,9 @@ import {
   type DreamInput,
   type DreamMood,
 } from '../types/dream'
+
+// How many of the user's most used signs to offer as one-tap chips.
+const QUICK_SUGGESTIONS = 8
 
 interface DreamFormProps {
   initialValues?: Partial<DreamInput>
@@ -70,6 +75,15 @@ export default function DreamForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // The user's past dream signs, most used first, minus the ones already on this dream. Reusing
+  // the same words keeps the stats and the Dream Web from splitting one sign into several.
+  const { myDreams } = useDreamPosts()
+  const knownSymbols = useMemo(() => symbolsByFrequency(myDreams), [myDreams])
+  const suggestions = useMemo(() => {
+    const taken = new Set(symbols.map((s) => s.toLowerCase()))
+    return knownSymbols.filter((symbol) => !taken.has(symbol))
+  }, [knownSymbols, symbols])
+
   const values: DreamInput = { title, body, mood, symbols, isPrivate, dreamtOn }
   const valuesJson = JSON.stringify(values)
 
@@ -91,10 +105,10 @@ export default function DreamForm({
     setShowDraftNotice(false)
   }
 
-  function addSymbol() {
+  function addSymbol(raw: string = symbolInput) {
     // Lowercased so "Water" and "water" count as the same sign in the stats and the Dream Web.
-    const value = symbolInput.trim().replace(/\s+/g, ' ').toLowerCase()
-    if (!value || symbols.includes(value)) {
+    const value = raw.trim().replace(/\s+/g, ' ').toLowerCase()
+    if (!value || symbols.some((s) => s.toLowerCase() === value)) {
       setSymbolInput('')
       return
     }
@@ -241,17 +255,44 @@ export default function DreamForm({
             value={symbolInput}
             onChange={(e) => setSymbolInput(e.target.value)}
             onKeyDown={handleSymbolKeyDown}
+            list={suggestions.length > 0 ? 'dream-symbol-suggestions' : undefined}
+            autoComplete="off"
             placeholder="Add a symbol you noticed…"
             className="flex-1 rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-sm text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
           />
+          {/* Type-ahead over every past sign; the chips below cover the most used ones. */}
+          <datalist id="dream-symbol-suggestions">
+            {suggestions.map((symbol) => (
+              <option key={symbol} value={symbol} />
+            ))}
+          </datalist>
           <button
             type="button"
-            onClick={addSymbol}
+            onClick={() => addSymbol()}
             className="rounded-lg border border-midnight-700 px-3 py-2 text-sm text-moon-300 hover:border-nebula-400/60"
           >
             Add
           </button>
         </div>
+        {suggestions.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span id="dream-symbol-quick" className="text-xs text-moon-500">
+              Your usual signs:
+            </span>
+            {suggestions.slice(0, QUICK_SUGGESTIONS).map((symbol) => (
+              <button
+                key={symbol}
+                type="button"
+                onClick={() => addSymbol(symbol)}
+                aria-label={`Add ${symbol}`}
+                aria-describedby="dream-symbol-quick"
+                className="rounded-full border border-dashed border-midnight-700 px-3 py-1 text-xs text-moon-400 transition-colors hover:border-nebula-400/60 hover:text-moon-100"
+              >
+                + {symbol}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
