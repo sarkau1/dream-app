@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Session, User } from '@supabase/auth-js'
+import type { User } from '@supabase/auth-js'
 
 // Lives apart from AuthProvider so that file only exports a component (keeps fast refresh working).
 /** The signed-in user's public profile row (see supabase/schema.sql). */
@@ -10,7 +10,6 @@ export interface Profile {
 
 export interface AuthContextValue {
   user: User | null
-  session: Session | null
   loading: boolean
   /** null until loaded, and while signed out */
   profile: Profile | null

@@ -207,7 +207,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      session,
       loading,
       profile,
       profileError,
@@ -224,7 +223,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       user,
-      session,
       loading,
       profile,
       profileError,

@@ -1,88 +1,87 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
+import TextField, { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { todayLocal } from '../../lib/dates'
 import { essenceFromDreams } from '../../lib/essence'
 import { downloadFile, dreamsToJson, dreamsToMarkdown } from '../../lib/exportDreams'
 import { MIN_PASSWORD_LENGTH, newPasswordProblem } from '../../lib/passwords'
-import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import { useSubmit } from '../../lib/useSubmit'
 import {
   cardClass,
   dangerButtonClass,
   dangerOutlineButtonClass,
-  inputClass,
-  labelClass,
   primaryButtonClass,
   secondaryButtonClass,
 } from '../../styles/ui'
-import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
 
 const sectionClass = `space-y-4 p-6 ${cardClass}`
+
+function SectionHeading({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div>
+      <h2 className="text-lg font-medium text-moon-100">{title}</h2>
+      {children && <p className="mt-1 text-sm text-moon-400">{children}</p>}
+    </div>
+  )
+}
+
+function Saved({ show, children }: { show: boolean; children: ReactNode }) {
+  if (!show) return null
+  return (
+    <p role="status" className="text-sm text-aurora-300">
+      {children}
+    </p>
+  )
+}
 
 function DisplayNameForm({ current }: { current: string }) {
   const { updateDisplayName } = useAuth()
   const { refresh, refreshMyDreams } = useDreamPosts()
   const [name, setName] = useState(current)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-  const unchanged = name.trim() === current
+  const submit = useSubmit()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setSaving(true)
-    setError(null)
-    setSaved(false)
-    const { error } = await updateDisplayName(name)
-    setSaving(false)
-
-    if (error) {
-      setError(error)
-      return
+    if (await submit.run(() => updateDisplayName(name))) {
+      // Author names are resolved when dreams are fetched, so reload them to show the new name.
+      void refresh()
+      void refreshMyDreams()
     }
-    setSaved(true)
-    // Author names are resolved when dreams are fetched, so reload them to show the new name.
-    void refresh()
-    void refreshMyDreams()
   }
 
   return (
     <form onSubmit={handleSubmit} className={sectionClass}>
-      <div>
-        <h2 className="text-lg font-medium text-moon-100">Display name</h2>
-        <p className="mt-1 text-sm text-moon-400">
-          Shown next to every dream you share in the Dream Feed.
-        </p>
-      </div>
-      <div>
-        <label htmlFor="profile-name" className="sr-only">
-          Display name
-        </label>
-        <input
-          id="profile-name"
-          autoComplete="nickname"
-          value={name}
-          required
-          maxLength={MAX_DISPLAY_NAME_LENGTH}
-          onChange={(e) => {
-            setName(e.target.value)
-            setSaved(false)
-          }}
-          className={inputClass}
-        />
-      </div>
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      <SectionHeading title="Display name">
+        Shown next to every dream you share in the Dream Feed.
+      </SectionHeading>
+      <TextField
+        id="profile-name"
+        label="Display name"
+        hideLabel
+        autoComplete="nickname"
+        value={name}
+        onChange={(value) => {
+          setName(value)
+          submit.reset()
+        }}
+        required
+        maxLength={MAX_DISPLAY_NAME_LENGTH}
+      />
+      <FormError message={submit.error} />
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving || unchanged} className={primaryButtonClass}>
-          {saving ? 'Saving...' : 'Save name'}
+        <button
+          type="submit"
+          disabled={submit.pending || name.trim() === current}
+          className={primaryButtonClass}
+        >
+          {submit.pending ? 'Saving...' : 'Save name'}
         </button>
-        {saved && (
-          <p role="status" className="text-sm text-aurora-300">
-            Saved.
-          </p>
-        )}
+        <Saved show={submit.done}>Saved.</Saved>
       </div>
     </form>
   )
@@ -91,61 +90,42 @@ function DisplayNameForm({ current }: { current: string }) {
 function EmailForm({ current }: { current: string }) {
   const { changeEmail } = useAuth()
   const [email, setEmail] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [sentTo, setSentTo] = useState<string | null>(null)
+  const [sentTo, setSentTo] = useState('')
+  const submit = useSubmit()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const next = email.trim()
     if (!next || next.toLowerCase() === current.toLowerCase()) {
-      setError('Enter a different email address.')
+      submit.fail('Enter a different email address.')
       return
     }
-
-    setSaving(true)
-    setError(null)
-    const { error } = await changeEmail(next)
-    setSaving(false)
-
-    if (error) {
-      setError(error)
-      return
+    if (await submit.run(() => changeEmail(next))) {
+      setSentTo(next)
+      setEmail('')
     }
-    setSentTo(next)
-    setEmail('')
   }
 
   return (
     <form onSubmit={handleSubmit} className={sectionClass}>
-      <div>
-        <h2 className="text-lg font-medium text-moon-100">Email</h2>
-        <p className="mt-1 text-sm text-moon-400">
-          You log in with <strong className="text-moon-100">{current}</strong>. Only you can see it.
-        </p>
-      </div>
-      <div>
-        <label htmlFor="profile-email" className={labelClass}>
-          New email
-        </label>
-        <input
-          id="profile-email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputClass}
-          placeholder="you@example.com"
-        />
-      </div>
-      {error && <p className="text-sm text-rose-400">{error}</p>}
-      {sentTo && (
-        <p role="status" className="text-sm text-aurora-300">
-          Check {sentTo} for a confirmation link. Your email changes once you follow it.
-        </p>
-      )}
-      <button type="submit" disabled={saving || !email.trim()} className={primaryButtonClass}>
-        {saving ? 'Sending...' : 'Change email'}
+      <SectionHeading title="Email">
+        You log in with <strong className="text-moon-100">{current}</strong>. Only you can see it.
+      </SectionHeading>
+      <TextField
+        id="profile-email"
+        label="New email"
+        type="email"
+        autoComplete="email"
+        value={email}
+        onChange={setEmail}
+        placeholder="you@example.com"
+      />
+      <FormError message={submit.error} />
+      <Saved show={submit.done}>
+        Check {sentTo} for a confirmation link. Your email changes once you follow it.
+      </Saved>
+      <button type="submit" disabled={submit.pending || !email.trim()} className={primaryButtonClass}>
+        {submit.pending ? 'Sending...' : 'Change email'}
       </button>
     </form>
   )
@@ -156,151 +136,117 @@ function PasswordForm() {
   const [current, setCurrent] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const submit = useSubmit()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setSaved(false)
-    if (!current) {
-      setError('Enter your current password.')
-      return
-    }
-    const problem = newPasswordProblem(password, confirm)
+    const problem = current ? newPasswordProblem(password, confirm) : 'Enter your current password.'
     if (problem) {
-      setError(problem)
+      submit.fail(problem)
       return
     }
-
-    setSaving(true)
-    setError(null)
-    const { error } = await changePassword(current, password)
-    setSaving(false)
-
-    if (error) {
-      setError(error)
-      return
+    if (await submit.run(() => changePassword(current, password))) {
+      setCurrent('')
+      setPassword('')
+      setConfirm('')
     }
-    setCurrent('')
-    setPassword('')
-    setConfirm('')
-    setSaved(true)
   }
 
   return (
     <form onSubmit={handleSubmit} className={sectionClass}>
-      <h2 className="text-lg font-medium text-moon-100">Change password</h2>
-      <div>
-        <label htmlFor="profile-current" className={labelClass}>
-          Current password
-        </label>
-        <input
-          id="profile-current"
-          type="password"
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-moon-500">
-          Forgot it?{' '}
-          <Link to="/forgot-password" className="text-nebula-300 hover:underline">
-            Get a reset link
-          </Link>
-        </p>
-      </div>
-      <div>
-        <label htmlFor="profile-password" className={labelClass}>
-          New password
-        </label>
-        <input
-          id="profile-password"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
-          placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-        />
-      </div>
-      <div>
-        <label htmlFor="profile-confirm" className={labelClass}>
-          Confirm new password
-        </label>
-        <input
-          id="profile-confirm"
-          type="password"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          className={inputClass}
-        />
-      </div>
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      <SectionHeading title="Change password" />
+      <TextField
+        id="profile-current"
+        label="Current password"
+        type="password"
+        autoComplete="current-password"
+        value={current}
+        onChange={setCurrent}
+        hint={
+          <>
+            Forgot it?{' '}
+            <Link to="/forgot-password" className="text-nebula-300 hover:underline">
+              Get a reset link
+            </Link>
+          </>
+        }
+      />
+      <TextField
+        id="profile-password"
+        label="New password"
+        type="password"
+        autoComplete="new-password"
+        value={password}
+        onChange={setPassword}
+        placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+      />
+      <TextField
+        id="profile-confirm"
+        label="Confirm new password"
+        type="password"
+        autoComplete="new-password"
+        value={confirm}
+        onChange={setConfirm}
+      />
+      <FormError message={submit.error} />
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving || !password} className={primaryButtonClass}>
-          {saving ? 'Saving...' : 'Save new password'}
+        <button type="submit" disabled={submit.pending || !password} className={primaryButtonClass}>
+          {submit.pending ? 'Saving...' : 'Save new password'}
         </button>
-        {saved && (
-          <p role="status" className="text-sm text-aurora-300">
-            Password changed.
-          </p>
-        )}
+        <Saved show={submit.done}>Password changed.</Saved>
       </div>
     </form>
   )
 }
 
+type ExportFormat = 'markdown' | 'json'
+
 function ExportSection() {
   const { exportMyDreams } = useDreamPosts()
-  const [exporting, setExporting] = useState<'markdown' | 'json' | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [format, setFormat] = useState<ExportFormat | null>(null)
+  const submit = useSubmit()
 
-  async function handleExport(format: 'markdown' | 'json') {
-    setExporting(format)
-    setError(null)
-    const { dreams, error } = await exportMyDreams()
-    setExporting(null)
-    if (error) {
-      setError(error)
-      return
-    }
-
-    const today = todayLocal()
-    if (format === 'markdown') {
-      downloadFile(`dream-journal-${today}.md`, dreamsToMarkdown(dreams, today), 'text/markdown')
-    } else {
-      downloadFile(`dream-journal-${today}.json`, dreamsToJson(dreams, today), 'application/json')
-    }
+  async function handleExport(chosen: ExportFormat) {
+    setFormat(chosen)
+    await submit.run(async () => {
+      const { dreams, error } = await exportMyDreams()
+      if (error) return { error }
+      const today = todayLocal()
+      if (chosen === 'markdown') {
+        downloadFile(`dream-journal-${today}.md`, dreamsToMarkdown(dreams, today), 'text/markdown')
+      } else {
+        downloadFile(`dream-journal-${today}.json`, dreamsToJson(dreams, today), 'application/json')
+      }
+      return { error: null }
+    })
   }
+
+  const label = (value: ExportFormat, text: string) =>
+    submit.pending && format === value ? 'Preparing...' : text
 
   return (
     <section className={sectionClass}>
-      <div>
-        <h2 className="text-lg font-medium text-moon-100">Download your journal</h2>
-        <p className="mt-1 text-sm text-moon-400">
-          Every dream, private ones included, in full. Markdown reads like a diary; JSON is for
-          backups or moving to another app.
-        </p>
-      </div>
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      <SectionHeading title="Download your journal">
+        Every dream, private ones included, in full. Markdown reads like a diary; JSON is for
+        backups or moving to another app.
+      </SectionHeading>
+      <FormError message={submit.error} />
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={() => handleExport('markdown')}
-          disabled={exporting !== null}
+          disabled={submit.pending}
           className={secondaryButtonClass}
         >
-          {exporting === 'markdown' ? 'Preparing...' : 'Download as Markdown'}
+          {label('markdown', 'Download as Markdown')}
         </button>
         <button
           type="button"
           onClick={() => handleExport('json')}
-          disabled={exporting !== null}
+          disabled={submit.pending}
           className={secondaryButtonClass}
         >
-          {exporting === 'json' ? 'Preparing...' : 'Download as JSON'}
+          {label('json', 'Download as JSON')}
         </button>
       </div>
     </section>
@@ -315,27 +261,22 @@ function DeleteAccountSection({ dreamCount }: { dreamCount: number }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = useState('')
-  const [deleting, setDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const submit = useSubmit()
   const confirmed = typed.trim().toLowerCase() === DELETE_CONFIRMATION
 
   async function handleDelete(e: FormEvent) {
     e.preventDefault()
-    if (!confirmed) return
+    if (confirmed && (await submit.run(deleteAccount))) navigate('/', { replace: true })
+  }
 
-    setDeleting(true)
-    setError(null)
-    const { error } = await deleteAccount()
-    if (error) {
-      setDeleting(false)
-      setError(error)
-      return
-    }
-    navigate('/', { replace: true })
+  function cancel() {
+    setOpen(false)
+    setTyped('')
+    submit.reset()
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-6">
+    <section className="space-y-4 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6">
       <div>
         <h2 className="text-lg font-medium text-rose-300">Delete account</h2>
         <p className="mt-1 text-sm text-moon-400">
@@ -346,44 +287,29 @@ function DeleteAccountSection({ dreamCount }: { dreamCount: number }) {
       </div>
       {open ? (
         <form onSubmit={handleDelete} className="space-y-3">
-          <label htmlFor="profile-delete" className="block text-sm text-moon-300">
-            Type <strong className="text-rose-300">{DELETE_CONFIRMATION}</strong> to confirm
-          </label>
-          <input
+          <TextField
             id="profile-delete"
+            label={
+              <>
+                Type <strong className="text-rose-300">{DELETE_CONFIRMATION}</strong> to confirm
+              </>
+            }
             autoComplete="off"
             value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            className={inputClass}
+            onChange={setTyped}
           />
-          {error && <p className="text-sm text-rose-400">{error}</p>}
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={deleting || !confirmed}
-              className={dangerButtonClass}
-            >
-              {deleting ? 'Deleting...' : 'Delete everything'}
+          <FormError message={submit.error} />
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" disabled={submit.pending || !confirmed} className={dangerButtonClass}>
+              {submit.pending ? 'Deleting...' : 'Delete everything'}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                setTyped('')
-                setError(null)
-              }}
-              className={secondaryButtonClass}
-            >
+            <button type="button" onClick={cancel} className={secondaryButtonClass}>
               Cancel
             </button>
           </div>
         </form>
       ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className={dangerOutlineButtonClass}
-        >
+        <button type="button" onClick={() => setOpen(true)} className={dangerOutlineButtonClass}>
           Delete my account...
         </button>
       )}
@@ -391,12 +317,36 @@ function DeleteAccountSection({ dreamCount }: { dreamCount: number }) {
   )
 }
 
+function ProfileLoadError({ message }: { message: string }) {
+  const { reloadProfile } = useAuth()
+  const retry = useSubmit()
+
+  // reloadProfile reports its outcome through profileError, not a return value.
+  async function tryAgain() {
+    await reloadProfile()
+    return { error: null }
+  }
+
+  return (
+    <div className={sectionClass}>
+      <FormError message={`Couldn’t load your profile: ${message}`} />
+      <button
+        type="button"
+        onClick={() => retry.run(tryAgain)}
+        disabled={retry.pending}
+        className={primaryButtonClass}
+      >
+        {retry.pending ? 'Trying...' : 'Try again'}
+      </button>
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   useDocumentTitle('Profile')
   // ProtectedRoute guarantees a user here.
-  const { user, profile, profileError, reloadProfile } = useAuth()
+  const { user, profile, profileError } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
-  const [retrying, setRetrying] = useState(false)
   if (!user) return null
 
   const name = profile?.displayName ?? 'Dreamer'
@@ -408,25 +358,12 @@ export default function ProfilePage() {
     { label: '✦ Essence', value: essenceFromDreams(myDreams) },
   ]
 
-  async function retry() {
-    setRetrying(true)
-    await reloadProfile()
-    setRetrying(false)
-  }
-
   let nameSection
   if (profile) {
     // Only mounted once the profile has loaded, so the field starts from the saved name.
     nameSection = <DisplayNameForm key={user.id} current={profile.displayName} />
   } else if (profileError) {
-    nameSection = (
-      <div className={sectionClass}>
-        <p className="text-sm text-rose-400">Couldn&apos;t load your profile: {profileError}</p>
-        <button type="button" onClick={retry} disabled={retrying} className={primaryButtonClass}>
-          {retrying ? 'Trying...' : 'Try again'}
-        </button>
-      </div>
-    )
+    nameSection = <ProfileLoadError message={profileError} />
   } else {
     nameSection = <p className="text-moon-400">Loading your profile...</p>
   }
@@ -451,7 +388,7 @@ export default function ProfilePage() {
 
       <dl className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-midnight-700 bg-midnight-900/60 p-3">
+          <div key={stat.label} className={`p-3 ${cardClass}`}>
             <dt className="text-xs text-moon-500">{stat.label}</dt>
             <dd className="mt-1 text-lg font-semibold text-moon-100">
               {stillLoading ? '…' : stat.value}

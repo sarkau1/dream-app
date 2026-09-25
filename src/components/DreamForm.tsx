@@ -12,6 +12,7 @@ import {
   type DreamMood,
 } from '../types/dream'
 import { fieldClass, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from '../styles/ui'
+import { FormError } from './TextField'
 
 // How many of the user's most used signs to offer as one-tap chips.
 const QUICK_SUGGESTIONS = 8
@@ -345,7 +346,7 @@ export default function DreamForm({
         Keep this dream private (only visible to you)
       </label>
 
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      <FormError message={error} />
 
       <div className="flex flex-col gap-3 pt-2 sm:flex-row">
         <button

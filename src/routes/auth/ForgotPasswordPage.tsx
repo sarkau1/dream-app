@@ -1,35 +1,24 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import TextField, { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
-import { inputClass, labelClass, primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import { useSubmit } from '../../lib/useSubmit'
+import { primaryButtonClass } from '../../styles/ui'
 
 export default function ForgotPasswordPage() {
   useDocumentTitle('Forgot password')
   const { requestPasswordReset } = useAuth()
-
   const [email, setEmail] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [sent, setSent] = useState(false)
+  const submit = useSubmit()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!email.trim()) return
-
-    setSubmitting(true)
-    setError(null)
-    const { error } = await requestPasswordReset(email.trim())
-    setSubmitting(false)
-
-    if (error) {
-      setError(error)
-      return
-    }
-    setSent(true)
+    await submit.run(() => requestPasswordReset(email.trim()))
   }
 
-  if (sent) {
+  if (submit.done) {
     return (
       <div className="max-w-md space-y-4">
         <h1 className="text-3xl font-semibold text-moon-100">Check your email</h1>
@@ -55,29 +44,20 @@ export default function ForgotPasswordPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="forgot-email" className={labelClass}>
-            Email
-          </label>
-          <input
-            id="forgot-email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={inputClass}
-            placeholder="you@example.com"
-          />
-        </div>
+        <TextField
+          id="forgot-email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="you@example.com"
+        />
 
-        {error && <p className="text-sm text-rose-400">{error}</p>}
+        <FormError message={submit.error} />
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className={primaryButtonClass}
-        >
-          {submitting ? 'Sending...' : 'Send reset link'}
+        <button type="submit" disabled={submit.pending} className={primaryButtonClass}>
+          {submit.pending ? 'Sending...' : 'Send reset link'}
         </button>
       </form>
 

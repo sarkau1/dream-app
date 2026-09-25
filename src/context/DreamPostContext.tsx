@@ -81,6 +81,15 @@ function byCreatedAtDesc(a: { createdAt: string }, b: { createdAt: string }) {
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0
 }
 
+/** One page of the community feed, newest first; `before` pages past the oldest dream shown. */
+function fetchFeedPage(before?: string) {
+  let query = supabase.from(DREAMS_VIEW).select(FULL_COLUMNS).eq('is_private', false)
+  // Page by "older than the last one shown" rather than by offset, so dreams posted while
+  // someone is reading don't shift the pages and show up twice.
+  if (before) query = query.lt('created_at', before)
+  return query.order('created_at', { ascending: false }).limit(PAGE_SIZE)
+}
+
 // ilike treats % and _ as wildcards; a search for "100%" should look for the literal text.
 function escapeLike(text: string) {
   return text.replace(/[\\%_]/g, (char) => `\\${char}`)
@@ -168,12 +177,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
 
-    const { data, error: feedError } = await supabase
-      .from(DREAMS_VIEW)
-      .select(FULL_COLUMNS)
-      .eq('is_private', false)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
+    const { data, error: feedError } = await fetchFeedPage()
     if (gen !== feedGenRef.current) return
 
     if (feedError) {
@@ -195,15 +199,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
 
     const gen = feedGenRef.current
     setLoadingMore(true)
-    // Page by "older than the last one shown" rather than by offset, so dreams posted while
-    // someone is reading don't shift the pages and show up twice.
-    const { data, error: feedError } = await supabase
-      .from(DREAMS_VIEW)
-      .select(FULL_COLUMNS)
-      .eq('is_private', false)
-      .lt('created_at', loaded[loaded.length - 1].createdAt)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
+    const { data, error: feedError } = await fetchFeedPage(loaded[loaded.length - 1].createdAt)
     if (gen !== feedGenRef.current) return
 
     if (feedError) {

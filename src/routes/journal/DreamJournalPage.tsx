@@ -8,6 +8,8 @@ import type { DreamSummary } from '../../types/dream'
 import { primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
+import { FormError } from '../../components/TextField'
+import { useSubmit } from '../../lib/useSubmit'
 
 type JournalFilter = 'all' | 'private' | 'shared'
 
@@ -39,17 +41,9 @@ function mostCommon(values: string[]): string | null {
 
 function ShareToggle({ dream }: { dream: DreamSummary }) {
   const { setDreamPrivacy } = useDreamPosts()
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { pending: saving, error, run } = useSubmit()
   const shared = !dream.isPrivate
-
-  async function toggle() {
-    setSaving(true)
-    setError(null)
-    const { error } = await setDreamPrivacy(dream.id, shared)
-    if (error) setError(error)
-    setSaving(false)
-  }
+  const toggle = () => run(() => setDreamPrivacy(dream.id, shared))
 
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
@@ -164,7 +158,7 @@ export default function DreamJournalPage() {
 
   let content
   if (myDreamsError) {
-    content = <p className="text-sm text-rose-400">{myDreamsError}</p>
+    content = <FormError message={myDreamsError} />
   } else if (loadingMyDreams && myDreams.length === 0) {
     content = <DreamCardSkeleton label="Opening your journal..." />
   } else if (myDreams.length === 0) {

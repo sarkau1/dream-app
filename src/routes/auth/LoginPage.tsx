@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, type Location } from 'react-router-dom'
+import TextField, { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
-import { inputClass, labelClass, primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import { useSubmit } from '../../lib/useSubmit'
+import { primaryButtonClass } from '../../styles/ui'
 
 export default function LoginPage() {
   useDocumentTitle('Log in')
@@ -14,23 +16,14 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const submit = useSubmit()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!email.trim() || !password) return
-
-    setSubmitting(true)
-    setError(null)
-    const { error } = await signIn(email.trim(), password)
-    setSubmitting(false)
-
-    if (error) {
-      setError(error)
-      return
+    if (await submit.run(() => signIn(email.trim(), password))) {
+      navigate(from ? `${from.pathname}${from.search}` : '/dreams', { replace: true })
     }
-    navigate(from ? `${from.pathname}${from.search}` : '/dreams', { replace: true })
   }
 
   return (
@@ -38,49 +31,34 @@ export default function LoginPage() {
       <h1 className="text-3xl font-semibold text-moon-100">Log in</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="login-email" className={labelClass}>
-            Email
-          </label>
-          <input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={inputClass}
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div>
-          <div className="flex items-baseline justify-between">
-            <label htmlFor="login-password" className={labelClass}>
-              Password
-            </label>
+        <TextField
+          id="login-email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="you@example.com"
+        />
+        <TextField
+          id="login-password"
+          label="Password"
+          labelAside={
             <Link to="/forgot-password" className="text-xs text-nebula-300 hover:underline">
               Forgot password?
             </Link>
-          </div>
-          <input
-            id="login-password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-            placeholder="Your password"
-          />
-        </div>
+          }
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+          placeholder="Your password"
+        />
 
-        {error && <p className="text-sm text-rose-400">{error}</p>}
+        <FormError message={submit.error} />
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className={primaryButtonClass}
-        >
-          {submitting ? 'Logging in...' : 'Log in'}
+        <button type="submit" disabled={submit.pending} className={primaryButtonClass}>
+          {submit.pending ? 'Logging in...' : 'Log in'}
         </button>
       </form>
 

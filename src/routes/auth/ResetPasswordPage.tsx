@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import TextField, { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
 import { MIN_PASSWORD_LENGTH, newPasswordProblem } from '../../lib/passwords'
-import { inputClass, labelClass, primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import { useSubmit } from '../../lib/useSubmit'
+import { primaryButtonClass } from '../../styles/ui'
 
 /**
  * Landing page for the password-reset email. Supabase reads the token from the link and signs
@@ -17,27 +19,16 @@ export default function ResetPasswordPage() {
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const submit = useSubmit()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const problem = newPasswordProblem(password, confirm)
     if (problem) {
-      setError(problem)
+      submit.fail(problem)
       return
     }
-
-    setSubmitting(true)
-    setError(null)
-    const { error } = await updatePassword(password)
-    setSubmitting(false)
-
-    if (error) {
-      setError(error)
-      return
-    }
-    navigate('/journal', { replace: true })
+    if (await submit.run(() => updatePassword(password))) navigate('/journal', { replace: true })
   }
 
   if (loading) return <p className="text-moon-400">Loading...</p>
@@ -56,49 +47,33 @@ export default function ResetPasswordPage() {
     )
   }
 
-
   return (
     <div className="max-w-md space-y-6">
       <h1 className="text-3xl font-semibold text-moon-100">Choose a new password</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="reset-password" className={labelClass}>
-            New password
-          </label>
-          <input
-            id="reset-password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-          />
-        </div>
+        <TextField
+          id="reset-password"
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+          placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+        />
+        <TextField
+          id="reset-confirm"
+          label="Confirm new password"
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={setConfirm}
+        />
 
-        <div>
-          <label htmlFor="reset-confirm" className={labelClass}>
-            Confirm new password
-          </label>
-          <input
-            id="reset-confirm"
-            type="password"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            className={inputClass}
-          />
-        </div>
+        <FormError message={submit.error} />
 
-        {error && <p className="text-sm text-rose-400">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className={primaryButtonClass}
-        >
-          {submitting ? 'Saving...' : 'Save new password'}
+        <button type="submit" disabled={submit.pending} className={primaryButtonClass}>
+          {submit.pending ? 'Saving...' : 'Save new password'}
         </button>
       </form>
     </div>

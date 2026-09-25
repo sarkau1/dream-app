@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import TextField, { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
 import { MIN_PASSWORD_LENGTH } from '../../lib/passwords'
-import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
-import { inputClass, labelClass, primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import { useSubmit } from '../../lib/useSubmit'
+import { primaryButtonClass } from '../../styles/ui'
+import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
 
 export default function RegisterPage() {
   useDocumentTitle('Create an account')
@@ -14,32 +16,22 @@ export default function RegisterPage() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [confirmEmailSent, setConfirmEmailSent] = useState(false)
+  const submit = useSubmit()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!displayName.trim() || !email.trim() || !password) return
 
-    setSubmitting(true)
-    setError(null)
-    const { error, needsEmailConfirmation } = await signUp(
-      email.trim(),
-      password,
-      displayName.trim(),
-    )
-    setSubmitting(false)
-
-    if (error) {
-      setError(error)
-      return
-    }
-    if (needsEmailConfirmation) {
-      setConfirmEmailSent(true)
-      return
-    }
-    navigate('/dreams')
+    let needsConfirmation = false
+    const ok = await submit.run(async () => {
+      const result = await signUp(email.trim(), password, displayName.trim())
+      needsConfirmation = result.needsEmailConfirmation
+      return result
+    })
+    if (!ok) return
+    if (needsConfirmation) setConfirmEmailSent(true)
+    else navigate('/dreams')
   }
 
   if (confirmEmailSent) {
@@ -62,60 +54,39 @@ export default function RegisterPage() {
       <h1 className="text-3xl font-semibold text-moon-100">Create an account</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="register-name" className={labelClass}>
-            Display name
-          </label>
-          <input
-            id="register-name"
-            autoComplete="nickname"
-            value={displayName}
-            maxLength={MAX_DISPLAY_NAME_LENGTH}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="How should others see you?"
-            className={inputClass}
-          />
-        </div>
+        <TextField
+          id="register-name"
+          label="Display name"
+          autoComplete="nickname"
+          value={displayName}
+          onChange={setDisplayName}
+          maxLength={MAX_DISPLAY_NAME_LENGTH}
+          placeholder="How should others see you?"
+        />
+        <TextField
+          id="register-email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="you@example.com"
+        />
+        <TextField
+          id="register-password"
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+          minLength={MIN_PASSWORD_LENGTH}
+          placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+        />
 
-        <div>
-          <label htmlFor="register-email" className={labelClass}>
-            Email
-          </label>
-          <input
-            id="register-email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={inputClass}
-            placeholder="you@example.com"
-          />
-        </div>
+        <FormError message={submit.error} />
 
-        <div>
-          <label htmlFor="register-password" className={labelClass}>
-            Password
-          </label>
-          <input
-            id="register-password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={MIN_PASSWORD_LENGTH}
-            className={inputClass}
-            placeholder="At least 6 characters"
-          />
-        </div>
-
-        {error && <p className="text-sm text-rose-400">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className={primaryButtonClass}
-        >
-          {submitting ? 'Creating account...' : 'Register'}
+        <button type="submit" disabled={submit.pending} className={primaryButtonClass}>
+          {submit.pending ? 'Creating account...' : 'Register'}
         </button>
       </form>
 

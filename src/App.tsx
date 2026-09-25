@@ -1,21 +1,25 @@
+import { lazy, Suspense } from 'react'
 import { Route, BrowserRouter, Routes } from 'react-router-dom'
 import NavBar from './layout/NavBar'
 import PageShell from './layout/PageShell'
 import Home from './routes/Home'
 import NotFound from './routes/NotFound'
 import DreamJournalPage from './routes/journal/DreamJournalPage'
-import DreamWeb from './routes/web/DreamWeb'
-import ProfilePage from './routes/profile/ProfilePage'
-import RegisterPage from './routes/auth/RegisterPage'
-import LoginPage from './routes/auth/LoginPage'
-import ForgotPasswordPage from './routes/auth/ForgotPasswordPage'
-import ResetPasswordPage from './routes/auth/ResetPasswordPage'
 import DreamFeed from './routes/dreams/DreamFeed'
-import NewDreamPage from './routes/dreams/NewDreamPage'
-import DreamDetailPage from './routes/dreams/DreamDetailPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import { DreamPostProvider } from './context/DreamPostContext'
+
+// Home, the journal and the feed are where people land, so they ship in the main bundle. Every
+// other page is downloaded the first time it's opened, keeping the first load small on phones.
+const DreamWeb = lazy(() => import('./routes/web/DreamWeb'))
+const ProfilePage = lazy(() => import('./routes/profile/ProfilePage'))
+const RegisterPage = lazy(() => import('./routes/auth/RegisterPage'))
+const LoginPage = lazy(() => import('./routes/auth/LoginPage'))
+const ForgotPasswordPage = lazy(() => import('./routes/auth/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./routes/auth/ResetPasswordPage'))
+const NewDreamPage = lazy(() => import('./routes/dreams/NewDreamPage'))
+const DreamDetailPage = lazy(() => import('./routes/dreams/DreamDetailPage'))
 
 function App() {
   return (
@@ -25,6 +29,8 @@ function App() {
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <NavBar />
           <PageShell>
+            {/* Shown only for the moment a lazily loaded page is downloading. */}
+            <Suspense fallback={<p className="text-moon-400">Loading...</p>}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/register" element={<RegisterPage />} />
@@ -60,6 +66,7 @@ function App() {
               />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </PageShell>
         </BrowserRouter>
       </DreamPostProvider>

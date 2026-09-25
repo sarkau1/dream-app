@@ -6,6 +6,7 @@ import { useDreamPosts } from '../../context/useDreamPosts'
 import { primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
+import { FormError } from '../../components/TextField'
 
 export default function DreamFeed() {
   useDocumentTitle('Dream Feed')
@@ -50,7 +51,7 @@ export default function DreamFeed() {
       <EssenceEarnedNotice />
 
       {loading && <DreamCardSkeleton label="Loading dreams..." />}
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      <FormError message={error} />
       {!loading && !error && dreams.length === 0 && (
         <p className="text-moon-400">No dreams shared yet. Be the first to share one.</p>
       )}

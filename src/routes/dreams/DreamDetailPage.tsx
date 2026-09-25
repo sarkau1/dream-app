@@ -9,6 +9,7 @@ import { draftKey } from '../../lib/drafts'
 import type { DreamPost } from '../../types/dream'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
+import { FormError } from '../../components/TextField'
 
 export default function DreamDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -71,7 +72,7 @@ export default function DreamDetailPage() {
   }
 
   if (error && !dream) {
-    return <p className="text-sm text-rose-400">{error}</p>
+    return <FormError message={error} />
   }
 
   if (!dream) {
@@ -153,7 +154,9 @@ export default function DreamDetailPage() {
           <DreamTags dream={dream} large className="mt-3" />
 
           <p className="mt-4 whitespace-pre-wrap text-moon-300">{dream.body}</p>
-          {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
+          <div className="mt-3">
+            <FormError message={error} />
+          </div>
         </div>
       )}
     </div>
