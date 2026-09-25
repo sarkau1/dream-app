@@ -20,9 +20,11 @@ derived from your saved dreams).
    `profiles` and `dreams` tables and their security policies.
 4. Copy `.env.example` to `.env.local` and fill in your project's URL and anon key (Project
    Settings -> API).
-5. For password reset emails, add your app's `/reset-password` URL under Authentication -> URL
-   Configuration -> Redirect URLs, e.g. `http://localhost:5173/reset-password` and
-   `https://<user>.github.io/<repo>/reset-password`.
+5. For the links in password-reset and email-change emails to work, add your app's
+   `/reset-password` and `/profile` URLs under Authentication -> URL Configuration -> Redirect
+   URLs, for both local and deployed, e.g. `http://localhost:5173/reset-password`,
+   `http://localhost:5173/profile`, `https://<user>.github.io/<repo>/reset-password` and
+   `https://<user>.github.io/<repo>/profile`.
 6. `npm run dev`
 
 `supabase/schema.sql` is safe to re-run: when you pull a change that adds a column, run the

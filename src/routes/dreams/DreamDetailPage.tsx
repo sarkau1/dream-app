@@ -104,6 +104,7 @@ export default function DreamDetailPage() {
             dreamtOn: dream.dreamtOn,
           }}
           draftKey={user ? draftKey(user.id, dream.id) : undefined}
+          editsSavedDream
           submitLabel="Save changes"
           submittingLabel="Saving..."
           onSubmit={(values) => updateDream(dream.id, values)}
