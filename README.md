@@ -1,4 +1,4 @@
-# Dream App
+# Lucent Dreaming
 
 A dream journaling site. Register, keep a journal of your dreams (private by default), and
 share the ones you choose to a community feed. Tag the symbols you notice and the Dream Web
@@ -33,6 +33,7 @@ whole file again to migrate an existing database.
 - `npm run dev` - start the dev server
 - `npm run build` - typecheck and build for production
 - `npm run lint` - run oxlint
+- `npm test` - run the unit tests (Vitest)
 
 ## Deployment
 
@@ -42,10 +43,10 @@ Settings -> Secrets and variables -> Actions: `VITE_SUPABASE_URL` and `VITE_SUPA
 GitHub Pages itself needs to be enabled once under Settings -> Pages -> Source ->
 GitHub Actions.
 
-Every pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (lint + build)
+Every pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (lint + test + build)
 so changes get checked before merging.
 
 ## Contributing
 
-Pull requests welcome. Open an issue or PR describing the change; CI will lint and build it
+Pull requests welcome. Open an issue or PR describing the change; CI will lint, test and build it
 automatically.
