@@ -8,14 +8,18 @@ import { essenceFromDreams } from '../../lib/essence'
 import { downloadFile, dreamsToJson, dreamsToMarkdown } from '../../lib/exportDreams'
 import { MIN_PASSWORD_LENGTH, newPasswordProblem } from '../../lib/passwords'
 import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
+import {
+  cardClass,
+  dangerButtonClass,
+  dangerOutlineButtonClass,
+  inputClass,
+  labelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from '../../styles/ui'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
-const inputClass =
-  'mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none'
-const buttonClass =
-  'rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400 disabled:opacity-50'
-const secondaryButtonClass =
-  'rounded-full border border-midnight-700 px-5 py-2 text-sm text-moon-300 hover:text-moon-100 disabled:opacity-50'
-const sectionClass = 'space-y-4 rounded-xl border border-midnight-700 bg-midnight-900/60 p-6'
+const sectionClass = `space-y-4 p-6 ${cardClass}`
 
 function DisplayNameForm({ current }: { current: string }) {
   const { updateDisplayName } = useAuth()
@@ -71,7 +75,7 @@ function DisplayNameForm({ current }: { current: string }) {
       </div>
       {error && <p className="text-sm text-rose-400">{error}</p>}
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving || unchanged} className={buttonClass}>
+        <button type="submit" disabled={saving || unchanged} className={primaryButtonClass}>
           {saving ? 'Saving...' : 'Save name'}
         </button>
         {saved && (
@@ -121,7 +125,7 @@ function EmailForm({ current }: { current: string }) {
         </p>
       </div>
       <div>
-        <label htmlFor="profile-email" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="profile-email" className={labelClass}>
           New email
         </label>
         <input
@@ -140,7 +144,7 @@ function EmailForm({ current }: { current: string }) {
           Check {sentTo} for a confirmation link. Your email changes once you follow it.
         </p>
       )}
-      <button type="submit" disabled={saving || !email.trim()} className={buttonClass}>
+      <button type="submit" disabled={saving || !email.trim()} className={primaryButtonClass}>
         {saving ? 'Sending...' : 'Change email'}
       </button>
     </form>
@@ -188,7 +192,7 @@ function PasswordForm() {
     <form onSubmit={handleSubmit} className={sectionClass}>
       <h2 className="text-lg font-medium text-moon-100">Change password</h2>
       <div>
-        <label htmlFor="profile-current" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="profile-current" className={labelClass}>
           Current password
         </label>
         <input
@@ -207,7 +211,7 @@ function PasswordForm() {
         </p>
       </div>
       <div>
-        <label htmlFor="profile-password" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="profile-password" className={labelClass}>
           New password
         </label>
         <input
@@ -221,7 +225,7 @@ function PasswordForm() {
         />
       </div>
       <div>
-        <label htmlFor="profile-confirm" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="profile-confirm" className={labelClass}>
           Confirm new password
         </label>
         <input
@@ -235,7 +239,7 @@ function PasswordForm() {
       </div>
       {error && <p className="text-sm text-rose-400">{error}</p>}
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving || !password} className={buttonClass}>
+        <button type="submit" disabled={saving || !password} className={primaryButtonClass}>
           {saving ? 'Saving...' : 'Save new password'}
         </button>
         {saved && (
@@ -357,7 +361,7 @@ function DeleteAccountSection({ dreamCount }: { dreamCount: number }) {
             <button
               type="submit"
               disabled={deleting || !confirmed}
-              className="rounded-full bg-rose-500 px-5 py-2 text-sm font-medium text-white hover:bg-rose-400 disabled:opacity-50"
+              className={dangerButtonClass}
             >
               {deleting ? 'Deleting...' : 'Delete everything'}
             </button>
@@ -378,7 +382,7 @@ function DeleteAccountSection({ dreamCount }: { dreamCount: number }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="rounded-full border border-rose-500/40 px-5 py-2 text-sm text-rose-300 hover:bg-rose-500/10"
+          className={dangerOutlineButtonClass}
         >
           Delete my account...
         </button>
@@ -388,6 +392,7 @@ function DeleteAccountSection({ dreamCount }: { dreamCount: number }) {
 }
 
 export default function ProfilePage() {
+  useDocumentTitle('Profile')
   // ProtectedRoute guarantees a user here.
   const { user, profile, profileError, reloadProfile } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
@@ -417,7 +422,7 @@ export default function ProfilePage() {
     nameSection = (
       <div className={sectionClass}>
         <p className="text-sm text-rose-400">Couldn&apos;t load your profile: {profileError}</p>
-        <button type="button" onClick={retry} disabled={retrying} className={buttonClass}>
+        <button type="button" onClick={retry} disabled={retrying} className={primaryButtonClass}>
           {retrying ? 'Trying...' : 'Try again'}
         </button>
       </div>

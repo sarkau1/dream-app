@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, type Location } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
+import { inputClass, labelClass, primaryButtonClass } from '../../styles/ui'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
 export default function LoginPage() {
+  useDocumentTitle('Log in')
   const { signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,7 +39,7 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="login-email" className="block text-sm font-medium text-moon-300">
+          <label htmlFor="login-email" className={labelClass}>
             Email
           </label>
           <input
@@ -45,14 +48,14 @@ export default function LoginPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+            className={inputClass}
             placeholder="you@example.com"
           />
         </div>
 
         <div>
           <div className="flex items-baseline justify-between">
-            <label htmlFor="login-password" className="block text-sm font-medium text-moon-300">
+            <label htmlFor="login-password" className={labelClass}>
               Password
             </label>
             <Link to="/forgot-password" className="text-xs text-nebula-300 hover:underline">
@@ -65,7 +68,7 @@ export default function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+            className={inputClass}
             placeholder="Your password"
           />
         </div>
@@ -75,7 +78,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400 disabled:opacity-50"
+          className={primaryButtonClass}
         >
           {submitting ? 'Logging in...' : 'Log in'}
         </button>

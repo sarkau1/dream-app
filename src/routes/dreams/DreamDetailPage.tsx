@@ -7,6 +7,8 @@ import AuthorByline from '../../components/AuthorByline'
 import DreamTags from '../../components/DreamTags'
 import { draftKey } from '../../lib/drafts'
 import type { DreamPost } from '../../types/dream'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import DreamCardSkeleton from '../../components/DreamCardSkeleton'
 
 export default function DreamDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -20,6 +22,7 @@ export default function DreamDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  useDocumentTitle(dream?.title ?? 'Dream')
 
   useEffect(() => {
     if (!id) return
@@ -53,7 +56,7 @@ export default function DreamDetailPage() {
   }
 
   if (loading || authLoading) {
-    return <p className="text-moon-400">Loading dream...</p>
+    return <DreamCardSkeleton count={1} label="Loading dream..." />
   }
 
   if (!user) {

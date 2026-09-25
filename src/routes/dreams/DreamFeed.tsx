@@ -3,8 +3,12 @@ import DreamCard from '../../components/DreamCard'
 import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
+import { primaryButtonClass } from '../../styles/ui'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import DreamCardSkeleton from '../../components/DreamCardSkeleton'
 
 export default function DreamFeed() {
+  useDocumentTitle('Dream Feed')
   const { user, loading: authLoading } = useAuth()
   const { dreams, loading, loadingMore, hasMore, error, loadMore } = useDreamPosts()
 
@@ -37,7 +41,7 @@ export default function DreamFeed() {
         </div>
         <Link
           to="/dreams/new"
-          className="shrink-0 rounded-full bg-nebula-500 px-4 py-2 text-sm font-medium text-white hover:bg-nebula-400"
+          className={`shrink-0 ${primaryButtonClass}`}
         >
           Share a dream
         </Link>
@@ -45,7 +49,7 @@ export default function DreamFeed() {
 
       <EssenceEarnedNotice />
 
-      {loading && <p className="text-moon-400">Loading dreams...</p>}
+      {loading && <DreamCardSkeleton label="Loading dreams..." />}
       {error && <p className="text-sm text-rose-400">{error}</p>}
       {!loading && !error && dreams.length === 0 && (
         <p className="text-moon-400">No dreams shared yet. Be the first to share one.</p>

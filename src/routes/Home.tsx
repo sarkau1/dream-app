@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import { primaryButtonClass, secondaryButtonClass } from '../styles/ui'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 const sections = [
   {
@@ -20,6 +22,7 @@ const sections = [
 ]
 
 export default function Home() {
+  useDocumentTitle(null)
   const { user, loading } = useAuth()
 
   return (
@@ -37,7 +40,7 @@ export default function Home() {
             {user ? (
               <Link
                 to="/dreams/new?from=journal"
-                className="rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400"
+                className={primaryButtonClass}
               >
                 Write last night&apos;s dream
               </Link>
@@ -45,13 +48,13 @@ export default function Home() {
               <>
                 <Link
                   to="/register"
-                  className="rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400"
+                  className={primaryButtonClass}
                 >
                   Start your journal
                 </Link>
                 <Link
                   to="/login"
-                  className="rounded-full border border-midnight-700 px-5 py-2 text-sm text-moon-300 hover:text-moon-100"
+                  className={secondaryButtonClass}
                 >
                   Log in
                 </Link>

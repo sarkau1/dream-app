@@ -7,6 +7,7 @@ import { useDreamPosts } from '../../context/useDreamPosts'
 import { formatDreamDate } from '../../lib/dates'
 import type { DreamGraphEntry, DreamGraphNode } from '../../types/dreamNetwork'
 import type { DreamSummary } from '../../types/dream'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
 function toGraphEntries(dreams: DreamSummary[]): DreamGraphEntry[] {
   return dreams
@@ -20,6 +21,7 @@ function toGraphEntries(dreams: DreamSummary[]): DreamGraphEntry[] {
 }
 
 export default function DreamWeb() {
+  useDocumentTitle('Dream Web')
   const { user, loading: authLoading } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
   const navigate = useNavigate()
@@ -93,7 +95,13 @@ export default function DreamWeb() {
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-nebula-400" /> {symbolCount} symbols
             </span>
-            <span>Click a node to open it · drag to rearrange · scroll or pinch to zoom · drag background to pan</span>
+            {/* Worded for the device: mouse and trackpad, or touch. */}
+            <span className="pointer-coarse:hidden">
+              Click a node to open it · drag to rearrange · scroll to zoom · drag background to pan
+            </span>
+            <span className="hidden pointer-coarse:inline">
+              Tap a node to open it · drag to rearrange · pinch to zoom · drag background to pan
+            </span>
           </div>
 
           <DreamNetworkGraph

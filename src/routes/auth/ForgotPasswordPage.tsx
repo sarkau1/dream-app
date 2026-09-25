@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
+import { inputClass, labelClass, primaryButtonClass } from '../../styles/ui'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
 export default function ForgotPasswordPage() {
+  useDocumentTitle('Forgot password')
   const { requestPasswordReset } = useAuth()
 
   const [email, setEmail] = useState('')
@@ -53,7 +56,7 @@ export default function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="forgot-email" className="block text-sm font-medium text-moon-300">
+          <label htmlFor="forgot-email" className={labelClass}>
             Email
           </label>
           <input
@@ -62,7 +65,7 @@ export default function ForgotPasswordPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+            className={inputClass}
             placeholder="you@example.com"
           />
         </div>
@@ -72,7 +75,7 @@ export default function ForgotPasswordPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400 disabled:opacity-50"
+          className={primaryButtonClass}
         >
           {submitting ? 'Sending...' : 'Send reset link'}
         </button>

@@ -5,6 +5,9 @@ import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { formatDreamMonth } from '../../lib/dates'
 import type { DreamSummary } from '../../types/dream'
+import { primaryButtonClass } from '../../styles/ui'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import DreamCardSkeleton from '../../components/DreamCardSkeleton'
 
 type JournalFilter = 'all' | 'private' | 'shared'
 
@@ -84,6 +87,7 @@ function ShareToggle({ dream }: { dream: DreamSummary }) {
 }
 
 export default function DreamJournalPage() {
+  useDocumentTitle('Journal')
   const { myDreams, loadingMyDreams, myDreamsError, searchMyDreamBodies } = useDreamPosts()
   // ?q= prefills the search, e.g. when a symbol is clicked in the Dream Web.
   const [searchParams] = useSearchParams()
@@ -152,7 +156,7 @@ export default function DreamJournalPage() {
   }, [matches, visibleCount])
 
   const filterClass = (value: JournalFilter) =>
-    `rounded-full border px-3 py-1 text-xs transition-colors ${
+    `rounded-full border px-3.5 py-2 text-sm transition-colors sm:px-3 sm:py-1 sm:text-xs ${
       filter === value
         ? 'border-amber-400/50 bg-amber-400/10 text-amber-200'
         : 'border-midnight-700 text-moon-400 hover:text-moon-100'
@@ -162,7 +166,7 @@ export default function DreamJournalPage() {
   if (myDreamsError) {
     content = <p className="text-sm text-rose-400">{myDreamsError}</p>
   } else if (loadingMyDreams && myDreams.length === 0) {
-    content = <p className="text-moon-400">Opening your journal...</p>
+    content = <DreamCardSkeleton label="Opening your journal..." />
   } else if (myDreams.length === 0) {
     content = (
       <div className="rounded-2xl border border-dashed border-amber-400/30 bg-amber-400/5 p-8 text-center">
@@ -219,7 +223,7 @@ export default function DreamJournalPage() {
             placeholder="Search your journal by title, text, mood or symbol..."
             className="w-full rounded-full border border-midnight-700 bg-midnight-900/60 px-4 py-2 text-sm text-moon-100 placeholder:text-moon-500 focus:border-amber-400/50 focus:outline-none"
           />
-          <div role="group" aria-label="Filter dreams" className="flex gap-2">
+          <div role="group" aria-label="Filter dreams" className="flex flex-wrap gap-2">
             {JOURNAL_FILTERS.map(({ value, label }) => (
               <button
                 key={value}
@@ -285,7 +289,7 @@ export default function DreamJournalPage() {
         </div>
         <Link
           to={NEW_JOURNAL_DREAM}
-          className="shrink-0 rounded-full bg-nebula-500 px-4 py-2 text-sm font-medium text-white hover:bg-nebula-400"
+          className={`shrink-0 ${primaryButtonClass}`}
         >
           Write a dream
         </Link>

@@ -21,16 +21,54 @@
 
 html {
   color-scheme: dark;
+  /* Stop phones from inflating text in landscape. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* The grey flash on tap looks broken against the dark theme; focus and active styles cover it. */
+  -webkit-tap-highlight-color: transparent;
+  /* Keep content clear of notches and the home indicator in landscape. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   background-color: var(--color-midnight-950);
   background-image:
     radial-gradient(circle at 15% 10%, rgba(124, 92, 255, 0.18), transparent 40%),
     radial-gradient(circle at 85% 0%, rgba(94, 230, 200, 0.12), transparent 35%),
     radial-gradient(circle at 50% 100%, rgba(124, 92, 255, 0.1), transparent 45%);
   color: var(--color-moon-100);
+}
+
+/* One visible focus style for keyboard users everywhere. Fields have their own ring instead. */
+:focus-visible {
+  outline: 2px solid var(--color-nebula-400);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(124, 92, 255, 0.35);
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @keyframes essence-pop {

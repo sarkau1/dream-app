@@ -4,6 +4,7 @@ import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { draftKey } from '../../lib/drafts'
 import { ESSENCE_LUCID_DREAM } from '../../lib/essence'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
 export default function NewDreamPage() {
   const { user } = useAuth()
@@ -13,6 +14,7 @@ export default function NewDreamPage() {
   // Writing from the Journal starts private and returns there; sharing from the Feed starts public.
   const fromJournal = searchParams.get('from') === 'journal'
   const backTo = fromJournal ? '/journal' : '/dreams'
+  useDocumentTitle(fromJournal ? 'Write a dream' : 'Share a dream')
 
   return (
     <div className="max-w-xl space-y-6">

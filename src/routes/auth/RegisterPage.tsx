@@ -3,8 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { MIN_PASSWORD_LENGTH } from '../../lib/passwords'
 import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
+import { inputClass, labelClass, primaryButtonClass } from '../../styles/ui'
+import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
 export default function RegisterPage() {
+  useDocumentTitle('Create an account')
   const { signUp } = useAuth()
   const navigate = useNavigate()
 
@@ -60,7 +63,7 @@ export default function RegisterPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="register-name" className="block text-sm font-medium text-moon-300">
+          <label htmlFor="register-name" className={labelClass}>
             Display name
           </label>
           <input
@@ -70,12 +73,12 @@ export default function RegisterPage() {
             maxLength={MAX_DISPLAY_NAME_LENGTH}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="How should others see you?"
-            className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label htmlFor="register-email" className="block text-sm font-medium text-moon-300">
+          <label htmlFor="register-email" className={labelClass}>
             Email
           </label>
           <input
@@ -84,13 +87,13 @@ export default function RegisterPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+            className={inputClass}
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="register-password" className="block text-sm font-medium text-moon-300">
+          <label htmlFor="register-password" className={labelClass}>
             Password
           </label>
           <input
@@ -100,7 +103,7 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={MIN_PASSWORD_LENGTH}
-            className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+            className={inputClass}
             placeholder="At least 6 characters"
           />
         </div>
@@ -110,7 +113,7 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400 disabled:opacity-50"
+          className={primaryButtonClass}
         >
           {submitting ? 'Creating account...' : 'Register'}
         </button>

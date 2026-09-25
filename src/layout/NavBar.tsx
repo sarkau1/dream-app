@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { useAuth } from '../context/useAuth'
 import { useDreamPosts } from '../context/useDreamPosts'
 import { essenceFromDreams } from '../lib/essence'
+import { primaryButtonClass, secondaryButtonClass } from '../styles/ui'
 
 const links = [
   { to: '/', label: 'Home', end: true },
@@ -12,17 +13,26 @@ const links = [
   { to: '/web', label: 'Dream Web' },
 ]
 
+const linkColors = (isActive: boolean) =>
+  isActive ? 'bg-nebula-500/20 text-nebula-300' : 'text-moon-300 hover:text-moon-100'
+
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `block rounded-full px-4 py-2 text-sm transition-colors ${
-    isActive ? 'bg-nebula-500/20 text-nebula-300' : 'text-moon-300 hover:text-moon-100'
-  }`
+  `block rounded-full px-4 py-2 text-sm transition-colors ${linkColors(isActive)}`
+
+// Bigger rows in the phone menu, so each one is an easy thumb target.
+const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
+  `flex min-h-12 items-center rounded-2xl px-4 text-base transition-colors ${linkColors(isActive)}`
 
 export default function NavBar() {
   const { user, profile, signOut } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
   const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const closeMenu = () => setMenuOpen(false)
+  const location = useLocation()
+  // Remember which page the menu was opened on: following any link, including ones in the page
+  // itself rather than in the menu, lands somewhere else and so closes it.
+  const [menuOpenOn, setMenuOpenOn] = useState<string | null>(null)
+  const menuOpen = menuOpenOn === location.pathname
+  const closeMenu = () => setMenuOpenOn(null)
 
   async function handleSignOut() {
     closeMenu()
@@ -59,7 +69,7 @@ export default function NavBar() {
       </NavLink>
       <button
         onClick={handleSignOut}
-        className="rounded-full border border-midnight-700 px-4 py-2 text-sm text-moon-300 hover:text-moon-100"
+        className={secondaryButtonClass}
       >
         Log out
       </button>
@@ -76,7 +86,7 @@ export default function NavBar() {
       <NavLink
         to="/register"
         onClick={closeMenu}
-        className="rounded-full bg-nebula-500 px-4 py-2 text-sm font-medium text-white hover:bg-nebula-400"
+        className={primaryButtonClass}
       >
         Register
       </NavLink>
@@ -84,8 +94,8 @@ export default function NavBar() {
   )
 
   return (
-    <header className="sticky top-0 z-10 border-b border-midnight-700/60 bg-midnight-950/80 backdrop-blur">
-      <nav className="mx-auto max-w-5xl px-4 py-4 sm:px-6">
+    <header className="sticky top-0 z-20 border-b border-midnight-700/60 bg-midnight-950/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <nav className="mx-auto max-w-5xl px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center justify-between gap-3">
           <NavLink
             to="/"
@@ -113,11 +123,11 @@ export default function NavBar() {
           {/* Mobile: collapse into a menu. */}
           <button
             type="button"
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={() => setMenuOpenOn(menuOpen ? null : location.pathname)}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            className="rounded-full border border-midnight-700 p-2 text-moon-300 hover:text-moon-100 md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-midnight-700 text-moon-300 hover:text-moon-100 md:hidden"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -126,11 +136,11 @@ export default function NavBar() {
         </div>
 
         {menuOpen && (
-          <div id="mobile-menu" className="mt-4 space-y-4 md:hidden">
+          <div id="mobile-menu" className="mt-3 space-y-4 pb-2 md:hidden">
             <ul className="space-y-1">
               {links.map((link) => (
                 <li key={link.to}>
-                  <NavLink to={link.to} end={link.end} onClick={closeMenu} className={linkClass}>
+                  <NavLink to={link.to} end={link.end} onClick={closeMenu} className={mobileLinkClass}>
                     {link.label}
                   </NavLink>
                 </li>

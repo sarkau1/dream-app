@@ -24,6 +24,9 @@ interface Tooltip {
   node: DreamGraphNode
   screenX: number
   screenY: number
+  /** Show on the other side of the pointer, so it doesn't run off a narrow (phone) canvas. */
+  flipX: boolean
+  flipY: boolean
 }
 
 const REPULSION = 2200
@@ -280,6 +283,11 @@ export default function DreamNetworkGraph({ graph, onNodeClick, label }: Props) 
       return closest
     }
 
+    function tooltipAt(node: DreamGraphNode, sx: number, sy: number): Tooltip {
+      const { width, height } = sizeRef.current
+      return { node, screenX: sx, screenY: sy, flipX: sx > width - 240, flipY: sy > height - 120 }
+    }
+
     function localPoint(clientX: number, clientY: number) {
       const rect = canvas.getBoundingClientRect()
       return { x: clientX - rect.left, y: clientY - rect.top }
@@ -360,7 +368,7 @@ export default function DreamNetworkGraph({ graph, onNodeClick, label }: Props) 
         gesture.node.vx = 0
         gesture.node.vy = 0
         alphaRef.current = Math.max(alphaRef.current, 0.3)
-        setTooltip({ node: gesture.node, screenX: sx, screenY: sy })
+        setTooltip(tooltipAt(gesture.node, sx, sy))
         return
       }
       if (gesture?.kind === 'pan') {
@@ -372,7 +380,7 @@ export default function DreamNetworkGraph({ graph, onNodeClick, label }: Props) 
 
       const node = pickNode(sx, sy)
       hoveredRef.current = node
-      setTooltip(node ? { node, screenX: sx, screenY: sy } : null)
+      setTooltip(node ? tooltipAt(node, sx, sy) : null)
       canvas.style.cursor = node ? 'pointer' : 'grab'
     }
 
@@ -440,12 +448,16 @@ export default function DreamNetworkGraph({ graph, onNodeClick, label }: Props) 
       ref={containerRef}
       role="img"
       aria-label={label}
-      className="relative h-[560px] w-full overflow-hidden rounded-2xl border border-midnight-700 bg-midnight-950/60">
+      className="relative h-[60vh] max-h-[560px] min-h-[340px] w-full overflow-hidden rounded-2xl sm:h-[560px] border border-midnight-700 bg-midnight-950/60">
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-10 max-w-xs rounded-lg border border-midnight-600 bg-midnight-900/95 px-3 py-2 text-xs shadow-lg"
-          style={{ left: tooltip.screenX + 14, top: tooltip.screenY + 14 }}
+          className="pointer-events-none absolute z-10 w-max max-w-[min(20rem,80vw)] rounded-lg border border-midnight-600 bg-midnight-900/95 px-3 py-2 text-xs shadow-lg"
+          style={{
+            left: tooltip.screenX,
+            top: tooltip.screenY,
+            transform: `translate(${tooltip.flipX ? 'calc(-100% - 14px)' : '14px'}, ${tooltip.flipY ? 'calc(-100% - 14px)' : '14px'})`,
+          }}
         >
           {tooltip.node.type === 'symbol' ? (
             <p className="font-medium text-nebula-300">

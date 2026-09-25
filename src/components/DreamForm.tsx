@@ -11,6 +11,7 @@ import {
   type DreamInput,
   type DreamMood,
 } from '../types/dream'
+import { fieldClass, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from '../styles/ui'
 
 // How many of the user's most used signs to offer as one-tap chips.
 const QUICK_SUGGESTIONS = 8
@@ -48,7 +49,8 @@ function sameValues(a: DreamInput, b: DreamInput) {
 }
 
 function chipClass(active: boolean) {
-  return `rounded-full border px-3 py-1 text-xs transition-colors ${
+  // Roomier on phones (36px tall) so moods and signs are easy to tap; compact from `sm` up.
+  return `rounded-full border px-3.5 py-2 text-sm transition-colors sm:px-3 sm:py-1 sm:text-xs ${
     active
       ? 'border-nebula-400 bg-nebula-500/20 text-nebula-200'
       : 'border-midnight-700 text-moon-400 hover:text-moon-100'
@@ -198,7 +200,7 @@ export default function DreamForm({
       )}
 
       <div>
-        <label htmlFor="dream-date" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="dream-date" className={labelClass}>
           Date of the dream
         </label>
         <input
@@ -208,12 +210,12 @@ export default function DreamForm({
           max={todayLocal()}
           required
           onChange={(e) => setDreamtOn(e.target.value)}
-          className="mt-1 rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 focus:border-nebula-400 focus:outline-none"
+          className={`mt-1 ${fieldClass}`}
         />
       </div>
 
       <div>
-        <label htmlFor="dream-title" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="dream-title" className={labelClass}>
           Title
         </label>
         <input
@@ -222,13 +224,13 @@ export default function DreamForm({
           required
           maxLength={MAX_TITLE_LENGTH}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+          className={inputClass}
           placeholder="Give your dream a title"
         />
       </div>
 
       <div>
-        <label htmlFor="dream-body" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="dream-body" className={labelClass}>
           What happened?
         </label>
         <textarea
@@ -238,13 +240,13 @@ export default function DreamForm({
           maxLength={MAX_BODY_LENGTH}
           onChange={(e) => setBody(e.target.value)}
           rows={8}
-          className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+          className={inputClass}
           placeholder="Describe your dream..."
         />
       </div>
 
       <div>
-        <p id="dream-mood-label" className="block text-sm font-medium text-moon-300">
+        <p id="dream-mood-label" className={labelClass}>
           Mood
         </p>
         <div role="group" aria-labelledby="dream-mood-label" className="mt-2 flex flex-wrap gap-2">
@@ -263,7 +265,7 @@ export default function DreamForm({
       </div>
 
       <div>
-        <label htmlFor="dream-symbol" className="block text-sm font-medium text-moon-300">
+        <label htmlFor="dream-symbol" className={labelClass}>
           Dream signs
         </label>
         {symbols.length > 0 && (
@@ -291,7 +293,7 @@ export default function DreamForm({
             list={suggestions.length > 0 ? 'dream-symbol-suggestions' : undefined}
             autoComplete="off"
             placeholder="Add a symbol you noticed…"
-            className="flex-1 rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-sm text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
+            className={`min-w-0 flex-1 ${fieldClass}`}
           />
           {/* Type-ahead over every past sign; the chips below cover the most used ones. */}
           <datalist id="dream-symbol-suggestions">
@@ -302,7 +304,7 @@ export default function DreamForm({
           <button
             type="button"
             onClick={() => addSymbol()}
-            className="rounded-lg border border-midnight-700 px-3 py-2 text-sm text-moon-300 hover:border-nebula-400/60"
+            className="shrink-0 rounded-xl border border-midnight-700 px-4 text-sm text-moon-300 transition-colors hover:border-nebula-400/60 hover:text-moon-100"
           >
             Add
           </button>
@@ -319,7 +321,7 @@ export default function DreamForm({
                 onClick={() => addSymbol(symbol)}
                 aria-label={`Add ${symbol}`}
                 aria-describedby="dream-symbol-quick"
-                className="rounded-full border border-dashed border-midnight-700 px-3 py-1 text-xs text-moon-400 transition-colors hover:border-nebula-400/60 hover:text-moon-100"
+                className="rounded-full border border-dashed border-midnight-700 px-3.5 py-2 text-sm text-moon-400 transition-colors hover:border-nebula-400/60 hover:text-moon-100 sm:px-3 sm:py-1 sm:text-xs"
               >
                 + {symbol}
               </button>
@@ -328,26 +330,28 @@ export default function DreamForm({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* The whole row is the label, so it's one big tap target on phones. */}
+      <label
+        htmlFor="dream-private"
+        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-midnight-700 bg-midnight-900/40 px-3.5 py-2.5 text-sm text-moon-300 transition-colors hover:border-midnight-600"
+      >
         <input
           id="dream-private"
           type="checkbox"
           checked={isPrivate}
           onChange={(e) => setIsPrivate(e.target.checked)}
-          className="h-4 w-4 rounded border-midnight-700 bg-midnight-900/60 text-nebula-500 focus:ring-nebula-400"
+          className="h-5 w-5 shrink-0 accent-nebula-500"
         />
-        <label htmlFor="dream-private" className="text-sm text-moon-300">
-          Keep this dream private (only visible to you)
-        </label>
-      </div>
+        Keep this dream private (only visible to you)
+      </label>
 
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 pt-2 sm:flex-row">
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400 disabled:opacity-50"
+          className={`w-full sm:w-auto ${primaryButtonClass}`}
         >
           {submitting ? submittingLabel : submitLabel}
         </button>
@@ -355,7 +359,7 @@ export default function DreamForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full border border-midnight-700 px-5 py-2 text-sm text-moon-300 hover:text-moon-100"
+            className={`w-full sm:w-auto ${secondaryButtonClass}`}
           >
             Cancel
           </button>
