@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
+import { todayLocal } from '../../lib/dates'
 import { essenceFromDreams } from '../../lib/essence'
+import { downloadFile, dreamsToJson, dreamsToMarkdown } from '../../lib/exportDreams'
 import { MIN_PASSWORD_LENGTH, newPasswordProblem } from '../../lib/passwords'
 import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
 
@@ -11,6 +13,8 @@ const inputClass =
   'mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none'
 const buttonClass =
   'rounded-full bg-nebula-500 px-5 py-2 text-sm font-medium text-white hover:bg-nebula-400 disabled:opacity-50'
+const secondaryButtonClass =
+  'rounded-full border border-midnight-700 px-5 py-2 text-sm text-moon-300 hover:text-moon-100 disabled:opacity-50'
 const sectionClass = 'space-y-4 rounded-xl border border-midnight-700 bg-midnight-900/60 p-6'
 
 function DisplayNameForm({ current }: { current: string }) {
@@ -80,8 +84,72 @@ function DisplayNameForm({ current }: { current: string }) {
   )
 }
 
+function EmailForm({ current }: { current: string }) {
+  const { changeEmail } = useAuth()
+  const [email, setEmail] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sentTo, setSentTo] = useState<string | null>(null)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    const next = email.trim()
+    if (!next || next.toLowerCase() === current.toLowerCase()) {
+      setError('Enter a different email address.')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    const { error } = await changeEmail(next)
+    setSaving(false)
+
+    if (error) {
+      setError(error)
+      return
+    }
+    setSentTo(next)
+    setEmail('')
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={sectionClass}>
+      <div>
+        <h2 className="text-lg font-medium text-moon-100">Email</h2>
+        <p className="mt-1 text-sm text-moon-400">
+          You log in with <strong className="text-moon-100">{current}</strong>. Only you can see it.
+        </p>
+      </div>
+      <div>
+        <label htmlFor="profile-email" className="block text-sm font-medium text-moon-300">
+          New email
+        </label>
+        <input
+          id="profile-email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={inputClass}
+          placeholder="you@example.com"
+        />
+      </div>
+      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {sentTo && (
+        <p role="status" className="text-sm text-aurora-300">
+          Check {sentTo} for a confirmation link. Your email changes once you follow it.
+        </p>
+      )}
+      <button type="submit" disabled={saving || !email.trim()} className={buttonClass}>
+        {saving ? 'Sending...' : 'Change email'}
+      </button>
+    </form>
+  )
+}
+
 function PasswordForm() {
-  const { updatePassword } = useAuth()
+  const { changePassword } = useAuth()
+  const [current, setCurrent] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [saving, setSaving] = useState(false)
@@ -91,6 +159,10 @@ function PasswordForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaved(false)
+    if (!current) {
+      setError('Enter your current password.')
+      return
+    }
     const problem = newPasswordProblem(password, confirm)
     if (problem) {
       setError(problem)
@@ -99,13 +171,14 @@ function PasswordForm() {
 
     setSaving(true)
     setError(null)
-    const { error } = await updatePassword(password)
+    const { error } = await changePassword(current, password)
     setSaving(false)
 
     if (error) {
       setError(error)
       return
     }
+    setCurrent('')
     setPassword('')
     setConfirm('')
     setSaved(true)
@@ -114,6 +187,25 @@ function PasswordForm() {
   return (
     <form onSubmit={handleSubmit} className={sectionClass}>
       <h2 className="text-lg font-medium text-moon-100">Change password</h2>
+      <div>
+        <label htmlFor="profile-current" className="block text-sm font-medium text-moon-300">
+          Current password
+        </label>
+        <input
+          id="profile-current"
+          type="password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-moon-500">
+          Forgot it?{' '}
+          <Link to="/forgot-password" className="text-nebula-300 hover:underline">
+            Get a reset link
+          </Link>
+        </p>
+      </div>
       <div>
         <label htmlFor="profile-password" className="block text-sm font-medium text-moon-300">
           New password
@@ -156,10 +248,150 @@ function PasswordForm() {
   )
 }
 
+function ExportSection() {
+  const { exportMyDreams } = useDreamPosts()
+  const [exporting, setExporting] = useState<'markdown' | 'json' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleExport(format: 'markdown' | 'json') {
+    setExporting(format)
+    setError(null)
+    const { dreams, error } = await exportMyDreams()
+    setExporting(null)
+    if (error) {
+      setError(error)
+      return
+    }
+
+    const today = todayLocal()
+    if (format === 'markdown') {
+      downloadFile(`dream-journal-${today}.md`, dreamsToMarkdown(dreams, today), 'text/markdown')
+    } else {
+      downloadFile(`dream-journal-${today}.json`, dreamsToJson(dreams, today), 'application/json')
+    }
+  }
+
+  return (
+    <section className={sectionClass}>
+      <div>
+        <h2 className="text-lg font-medium text-moon-100">Download your journal</h2>
+        <p className="mt-1 text-sm text-moon-400">
+          Every dream, private ones included, in full. Markdown reads like a diary; JSON is for
+          backups or moving to another app.
+        </p>
+      </div>
+      {error && <p className="text-sm text-rose-400">{error}</p>}
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => handleExport('markdown')}
+          disabled={exporting !== null}
+          className={secondaryButtonClass}
+        >
+          {exporting === 'markdown' ? 'Preparing...' : 'Download as Markdown'}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleExport('json')}
+          disabled={exporting !== null}
+          className={secondaryButtonClass}
+        >
+          {exporting === 'json' ? 'Preparing...' : 'Download as JSON'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+// Typing this is the confirmation, so an account can't be deleted by a stray click.
+const DELETE_CONFIRMATION = 'delete my account'
+
+function DeleteAccountSection({ dreamCount }: { dreamCount: number }) {
+  const { deleteAccount } = useAuth()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const confirmed = typed.trim().toLowerCase() === DELETE_CONFIRMATION
+
+  async function handleDelete(e: FormEvent) {
+    e.preventDefault()
+    if (!confirmed) return
+
+    setDeleting(true)
+    setError(null)
+    const { error } = await deleteAccount()
+    if (error) {
+      setDeleting(false)
+      setError(error)
+      return
+    }
+    navigate('/', { replace: true })
+  }
+
+  return (
+    <section className="space-y-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-6">
+      <div>
+        <h2 className="text-lg font-medium text-rose-300">Delete account</h2>
+        <p className="mt-1 text-sm text-moon-400">
+          Permanently deletes your account and all {dreamCount} of your dreams, including any shared
+          in the feed. This can&apos;t be undone, so download your journal first if you want to
+          keep it.
+        </p>
+      </div>
+      {open ? (
+        <form onSubmit={handleDelete} className="space-y-3">
+          <label htmlFor="profile-delete" className="block text-sm text-moon-300">
+            Type <strong className="text-rose-300">{DELETE_CONFIRMATION}</strong> to confirm
+          </label>
+          <input
+            id="profile-delete"
+            autoComplete="off"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            className={inputClass}
+          />
+          {error && <p className="text-sm text-rose-400">{error}</p>}
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={deleting || !confirmed}
+              className="rounded-full bg-rose-500 px-5 py-2 text-sm font-medium text-white hover:bg-rose-400 disabled:opacity-50"
+            >
+              {deleting ? 'Deleting...' : 'Delete everything'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setTyped('')
+                setError(null)
+              }}
+              className={secondaryButtonClass}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="rounded-full border border-rose-500/40 px-5 py-2 text-sm text-rose-300 hover:bg-rose-500/10"
+        >
+          Delete my account...
+        </button>
+      )}
+    </section>
+  )
+}
+
 export default function ProfilePage() {
   // ProtectedRoute guarantees a user here.
-  const { user, profile } = useAuth()
+  const { user, profile, profileError, reloadProfile } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
+  const [retrying, setRetrying] = useState(false)
   if (!user) return null
 
   const name = profile?.displayName ?? 'Dreamer'
@@ -171,25 +403,44 @@ export default function ProfilePage() {
     { label: '✦ Essence', value: essenceFromDreams(myDreams) },
   ]
 
+  async function retry() {
+    setRetrying(true)
+    await reloadProfile()
+    setRetrying(false)
+  }
+
+  let nameSection
+  if (profile) {
+    // Only mounted once the profile has loaded, so the field starts from the saved name.
+    nameSection = <DisplayNameForm key={user.id} current={profile.displayName} />
+  } else if (profileError) {
+    nameSection = (
+      <div className={sectionClass}>
+        <p className="text-sm text-rose-400">Couldn&apos;t load your profile: {profileError}</p>
+        <button type="button" onClick={retry} disabled={retrying} className={buttonClass}>
+          {retrying ? 'Trying...' : 'Try again'}
+        </button>
+      </div>
+    )
+  } else {
+    nameSection = <p className="text-moon-400">Loading your profile...</p>
+  }
+
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
         <Avatar userId={user.id} name={name} large />
         <div className="min-w-0">
           <h1 className="truncate text-3xl font-semibold text-moon-100">{name}</h1>
-          <p className="truncate text-sm text-moon-400">
-            {user.email}
-            {profile && (
-              <>
-                {' '}
-                &middot; dreaming since{' '}
-                {new Date(profile.createdAt).toLocaleDateString(undefined, {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </>
-            )}
-          </p>
+          {profile && (
+            <p className="truncate text-sm text-moon-400">
+              Dreaming since{' '}
+              {new Date(profile.createdAt).toLocaleDateString(undefined, {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </p>
+          )}
         </div>
       </div>
 
@@ -211,13 +462,11 @@ export default function ProfilePage() {
         .
       </p>
 
-      {/* Only mounted once the profile has loaded, so the field starts from the saved name. */}
-      {profile ? (
-        <DisplayNameForm key={user.id} current={profile.displayName} />
-      ) : (
-        <p className="text-moon-400">Loading your profile...</p>
-      )}
+      {nameSection}
+      {user.email && <EmailForm current={user.email} />}
       <PasswordForm />
+      <ExportSection />
+      <DeleteAccountSection dreamCount={myDreams.length} />
     </div>
   )
 }

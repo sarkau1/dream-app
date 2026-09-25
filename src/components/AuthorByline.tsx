@@ -3,7 +3,11 @@ import { formatDreamDate } from '../lib/dates'
 import Avatar from './Avatar'
 import type { DreamPost } from '../types/dream'
 
-export default function AuthorByline({ dream }: { dream: DreamPost }) {
+export default function AuthorByline({
+  dream,
+}: {
+  dream: Pick<DreamPost, 'userId' | 'authorName' | 'dreamtOn'>
+}) {
   const { user } = useAuth()
   const isMine = user?.id === dream.userId
 

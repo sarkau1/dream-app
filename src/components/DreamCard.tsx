@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { formatDreamDate } from '../lib/dates'
 import AuthorByline from './AuthorByline'
 import DreamTags from './DreamTags'
-import type { DreamPost } from '../types/dream'
+import type { DreamPost, DreamSummary } from '../types/dream'
 
 // Rough check for whether line-clamp-4 is likely to cut the body off.
 function isLong(body: string) {
@@ -15,10 +15,12 @@ export default function DreamCard({
   showAuthor,
   action,
 }: {
-  dream: DreamPost
+  /** Journal lists pass a summary (preview text only); the feed passes the full dream. */
+  dream: DreamPost | DreamSummary
   showAuthor: boolean
   action?: ReactNode
 }) {
+  const text = 'body' in dream ? dream.body : dream.preview
   return (
     <li
       className={`rounded-xl border p-5 ${
@@ -43,8 +45,8 @@ export default function DreamCard({
       <DreamTags dream={dream} className="mt-2" />
 
       {/* Lists show a preview; the full text lives on the dream's own page. */}
-      <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-moon-300">{dream.body}</p>
-      {isLong(dream.body) && (
+      <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-moon-300">{text}</p>
+      {isLong(text) && (
         <Link
           to={`/dreams/${dream.id}`}
           className="mt-1 inline-block text-sm text-nebula-300 hover:text-nebula-200"

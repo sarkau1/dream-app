@@ -5,6 +5,8 @@ interface Props {
   graph: DreamGraph
   /** Called when a node is clicked or tapped (not dragged). */
   onNodeClick?: (node: DreamGraphNode) => void
+  /** What the graph shows, for screen readers (the canvas itself says nothing). */
+  label?: string
 }
 
 type Gesture =
@@ -53,7 +55,7 @@ function nodeRadius(node: DreamGraphNode) {
   return base + Math.sqrt(node.degree) * 2.2
 }
 
-export default function DreamNetworkGraph({ graph, onNodeClick }: Props) {
+export default function DreamNetworkGraph({ graph, onNodeClick, label }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const nodesRef = useRef<DreamGraphNode[]>(graph.nodes)
@@ -434,7 +436,11 @@ export default function DreamNetworkGraph({ graph, onNodeClick }: Props) {
   }, [graph])
 
   return (
-    <div ref={containerRef} className="relative h-[560px] w-full overflow-hidden rounded-2xl border border-midnight-700 bg-midnight-950/60">
+    <div
+      ref={containerRef}
+      role="img"
+      aria-label={label}
+      className="relative h-[560px] w-full overflow-hidden rounded-2xl border border-midnight-700 bg-midnight-950/60">
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
       {tooltip && (
         <div

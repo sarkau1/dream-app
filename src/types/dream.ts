@@ -24,3 +24,14 @@ export interface DreamPost extends DreamInput {
   authorName: string
   createdAt: string
 }
+
+/** Characters of the body kept in a DreamSummary; mirrors `left(body, 400)` in schema.sql. */
+export const PREVIEW_LENGTH = 400
+
+/**
+ * A dream as listed in the journal: everything but the full body, which only the dream's own
+ * page (and the export) downloads.
+ */
+export interface DreamSummary extends Omit<DreamPost, 'body'> {
+  preview: string
+}

@@ -4,10 +4,11 @@ import { buildDreamGraph } from '../../lib/buildDreamGraph'
 import DreamNetworkGraph from '../../components/DreamNetworkGraph'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
+import { formatDreamDate } from '../../lib/dates'
 import type { DreamGraphEntry, DreamGraphNode } from '../../types/dreamNetwork'
-import type { DreamPost } from '../../types/dream'
+import type { DreamSummary } from '../../types/dream'
 
-function toGraphEntries(dreams: DreamPost[]): DreamGraphEntry[] {
+function toGraphEntries(dreams: DreamSummary[]): DreamGraphEntry[] {
   return dreams
     .filter((dream) => dream.symbols.length > 0)
     .map((dream) => ({
@@ -33,7 +34,14 @@ export default function DreamWeb() {
   )
 
   const entryCount = graph.nodes.filter((n) => n.type === 'entry').length
-  const symbolCount = graph.nodes.filter((n) => n.type === 'symbol').length
+  const symbolNodes = useMemo(
+    () =>
+      graph.nodes
+        .filter((n) => n.type === 'symbol')
+        .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label)),
+    [graph],
+  )
+  const symbolCount = symbolNodes.length
 
   // A night opens that dream; a symbol opens the journal searched for it.
   function openNode(node: DreamGraphNode) {
@@ -88,7 +96,52 @@ export default function DreamWeb() {
             <span>Click a node to open it · drag to rearrange · scroll or pinch to zoom · drag background to pan</span>
           </div>
 
-          <DreamNetworkGraph graph={graph} onNodeClick={openNode} />
+          <DreamNetworkGraph
+            graph={graph}
+            onNodeClick={openNode}
+            label={`Graph of ${entryCount} nights and ${symbolCount} symbols. The same connections are listed below.`}
+          />
+
+          {/* The graph is a canvas, which keyboards and screen readers can't use; this lists the
+              same connections as links. */}
+          <section aria-labelledby="web-list-heading" className="grid gap-6 sm:grid-cols-2">
+            <h2 id="web-list-heading" className="sr-only">
+              Dream Web as a list
+            </h2>
+            <div>
+              <h3 className="text-sm font-medium text-moon-300">Symbols, most recurring first</h3>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {symbolNodes.map((node) => (
+                  <li key={node.id}>
+                    <Link
+                      to={`/journal?q=${encodeURIComponent(node.label)}`}
+                      className="inline-block rounded-full border border-midnight-700 px-3 py-1 text-xs text-moon-300 hover:border-nebula-400/60 hover:text-moon-100"
+                    >
+                      {node.label}
+                      <span className="text-moon-500"> · {node.degree}</span>
+                      <span className="sr-only"> nights</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <details className="group">
+              <summary className="cursor-pointer text-sm font-medium text-moon-300 hover:text-moon-100">
+                All {entryCount} nights
+              </summary>
+              <ul className="mt-3 space-y-1.5 text-sm">
+                {myEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <Link to={`/dreams/${entry.id}`} className="text-moon-300 hover:text-nebula-300">
+                      <span className="text-moon-500">{formatDreamDate(entry.date)}</span> ·{' '}
+                      {entry.note}
+                    </Link>
+                    <span className="text-xs text-moon-500"> — {entry.symbols.join(', ')}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </section>
         </>
       )}
     </div>

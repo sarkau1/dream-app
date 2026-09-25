@@ -52,4 +52,5 @@ const rest = new PostgrestClient(new URL('rest/v1', url).href, { fetch: fetchWit
 export const supabase = {
   auth,
   from: (table: string) => rest.from(table),
+  rpc: (fn: string) => rest.rpc(fn),
 }

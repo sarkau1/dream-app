@@ -119,3 +119,47 @@ create policy "Users can delete their own dreams"
 grant usage on schema public to authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.dreams to authenticated;
+
+-- Dreams joined to their author's display name, plus a short preview of the text, so the app
+-- reads a page of dreams in one request and the journal can list every dream without
+-- downloading every full body. security_invoker makes the view run as the signed-in user, so
+-- the dreams and profiles policies above still decide which rows come back.
+create or replace view public.dreams_with_authors
+  with (security_invoker = true)
+as
+select
+  d.id,
+  d.user_id,
+  d.title,
+  d.body,
+  left(d.body, 400) as preview,
+  d.mood,
+  d.symbols,
+  d.is_private,
+  d.dreamt_on,
+  d.created_at,
+  coalesce(p.display_name, 'Dreamer') as author_name
+from public.dreams d
+left join public.profiles p on p.user_id = d.user_id;
+
+grant select on public.dreams_with_authors to authenticated;
+
+-- Lets a signed-in user delete their own account. Their profile and dreams go with it through
+-- the `on delete cascade` foreign keys. security definer because only the database owner may
+-- delete from auth.users; the function can only ever delete the caller.
+create or replace function public.delete_own_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke execute on function public.delete_own_account() from public, anon;
+grant execute on function public.delete_own_account() to authenticated;

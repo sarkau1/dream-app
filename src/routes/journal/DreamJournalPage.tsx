@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import DreamCard from '../../components/DreamCard'
 import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { formatDreamMonth } from '../../lib/dates'
-import type { DreamPost } from '../../types/dream'
+import type { DreamSummary } from '../../types/dream'
 
 type JournalFilter = 'all' | 'private' | 'shared'
 
@@ -15,6 +15,10 @@ const JOURNAL_FILTERS: { value: JournalFilter; label: string }[] = [
 ]
 
 const NEW_JOURNAL_DREAM = '/dreams/new?from=journal'
+// Cards rendered at first and per "Show more", so a years-long journal doesn't render at once.
+const PAGE_SIZE = 30
+// Wait this long after typing stops before also searching the full text in the database.
+const SEARCH_DELAY_MS = 300
 
 function mostCommon(values: string[]): string | null {
   const counts = new Map<string, number>()
@@ -30,8 +34,8 @@ function mostCommon(values: string[]): string | null {
   return best
 }
 
-function ShareToggle({ dream }: { dream: DreamPost }) {
-  const { updateDream } = useDreamPosts()
+function ShareToggle({ dream }: { dream: DreamSummary }) {
+  const { setDreamPrivacy } = useDreamPosts()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const shared = !dream.isPrivate
@@ -39,7 +43,7 @@ function ShareToggle({ dream }: { dream: DreamPost }) {
   async function toggle() {
     setSaving(true)
     setError(null)
-    const { error } = await updateDream(dream.id, { ...dream, isPrivate: shared })
+    const { error } = await setDreamPrivacy(dream.id, shared)
     if (error) setError(error)
     setSaving(false)
   }
@@ -80,11 +84,29 @@ function ShareToggle({ dream }: { dream: DreamPost }) {
 }
 
 export default function DreamJournalPage() {
-  const { myDreams, loadingMyDreams, myDreamsError } = useDreamPosts()
+  const { myDreams, loadingMyDreams, myDreamsError, searchMyDreamBodies } = useDreamPosts()
   // ?q= prefills the search, e.g. when a symbol is clicked in the Dream Web.
   const [searchParams] = useSearchParams()
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
   const [filter, setFilter] = useState<JournalFilter>('all')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  // The journal only holds each dream's opening text, so matches deeper in a dream come from
+  // the database. Tagged with the query they answer so a stale answer is never applied.
+  const [bodyMatches, setBodyMatches] = useState<{ needle: string; ids: Set<string> } | null>(null)
+  const needle = query.trim().toLowerCase()
+
+  useEffect(() => {
+    if (needle.length < 2) return
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      const { ids } = await searchMyDreamBodies(needle)
+      if (!cancelled) setBodyMatches({ needle, ids: new Set(ids) })
+    }, SEARCH_DELAY_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [needle, searchMyDreamBodies])
 
   const stats = useMemo(
     () => ({
@@ -97,24 +119,37 @@ export default function DreamJournalPage() {
     [myDreams],
   )
 
-  const monthGroups = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    const matches = myDreams.filter(
+  const matches = useMemo(() => {
+    const deepMatches = bodyMatches?.needle === needle ? bodyMatches.ids : null
+    return myDreams.filter(
       (dream) =>
         (filter === 'all' || (filter === 'private') === dream.isPrivate) &&
         (!needle ||
-          [dream.title, dream.body, dream.mood ?? '', ...dream.symbols].some((text) =>
+          deepMatches?.has(dream.id) ||
+          [dream.title, dream.preview, dream.mood ?? '', ...dream.symbols].some((text) =>
             text.toLowerCase().includes(needle),
           )),
     )
+  }, [myDreams, needle, filter, bodyMatches])
 
-    const groups = new Map<string, DreamPost[]>()
+  // Counts per month over every match, so a month cut off by "Show more" still shows its total.
+  const monthTotals = useMemo(() => {
+    const totals = new Map<string, number>()
     for (const dream of matches) {
+      const month = formatDreamMonth(dream.dreamtOn)
+      totals.set(month, (totals.get(month) ?? 0) + 1)
+    }
+    return totals
+  }, [matches])
+
+  const monthGroups = useMemo(() => {
+    const groups = new Map<string, DreamSummary[]>()
+    for (const dream of matches.slice(0, visibleCount)) {
       const month = formatDreamMonth(dream.dreamtOn)
       groups.set(month, [...(groups.get(month) ?? []), dream])
     }
     return [...groups]
-  }, [myDreams, query, filter])
+  }, [matches, visibleCount])
 
   const filterClass = (value: JournalFilter) =>
     `rounded-full border px-3 py-1 text-xs transition-colors ${
@@ -177,7 +212,10 @@ export default function DreamJournalPage() {
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setVisibleCount(PAGE_SIZE)
+            }}
             placeholder="Search your journal by title, text, mood or symbol..."
             className="w-full rounded-full border border-midnight-700 bg-midnight-900/60 px-4 py-2 text-sm text-moon-100 placeholder:text-moon-500 focus:border-amber-400/50 focus:outline-none"
           />
@@ -187,7 +225,10 @@ export default function DreamJournalPage() {
                 key={value}
                 type="button"
                 aria-pressed={filter === value}
-                onClick={() => setFilter(value)}
+                onClick={() => {
+                  setFilter(value)
+                  setVisibleCount(PAGE_SIZE)
+                }}
                 className={filterClass(value)}
               >
                 {label}
@@ -201,7 +242,7 @@ export default function DreamJournalPage() {
         {monthGroups.map(([month, monthDreams]) => (
           <section key={month} className="space-y-3">
             <h2 className="text-xs font-medium uppercase tracking-wider text-moon-500">
-              {month} &middot; {monthDreams.length}
+              {month} &middot; {monthTotals.get(month)}
             </h2>
             <ul className="space-y-4">
               {monthDreams.map((dream) => (
@@ -215,6 +256,16 @@ export default function DreamJournalPage() {
             </ul>
           </section>
         ))}
+
+        {matches.length > visibleCount && (
+          <button
+            type="button"
+            onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+            className="w-full rounded-full border border-midnight-700 py-2 text-sm text-moon-300 hover:text-moon-100"
+          >
+            Show more ({matches.length - visibleCount} left)
+          </button>
+        )}
       </>
     )
   }

@@ -7,6 +7,6 @@ export const ESSENCE_LUCID_DREAM = 25
  * follows the account across devices, can't be edited client-side, and deleting a dream takes
  * its essence back (no create/delete farming).
  */
-export function essenceFromDreams(dreams: DreamPost[]): number {
+export function essenceFromDreams(dreams: Pick<DreamPost, 'mood'>[]): number {
   return dreams.filter((dream) => dream.mood === 'Lucid').length * ESSENCE_LUCID_DREAM
 }
