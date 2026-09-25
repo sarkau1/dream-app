@@ -1,9 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/auth-js'
 import { clearAllDrafts } from '../lib/drafts'
 import { isSupabaseConfigured, NOT_CONFIGURED_ERROR, supabase } from '../lib/supabaseClient'
 import { MAX_DISPLAY_NAME_LENGTH } from '../types/dream'
-import { AuthContext } from './useAuth'
+import { AuthContext, type Profile } from './useAuth'
 
 // Makes sure the user has a profile row, which is where the Dream Feed gets author names from.
 // Creates it if missing and never overwrites an existing one.
@@ -16,10 +16,22 @@ async function ensureProfile(user: User) {
     .upsert({ user_id: user.id, display_name: displayName }, { onConflict: 'user_id', ignoreDuplicates: true })
 }
 
+async function fetchProfile(userId: string): Promise<Profile | null> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('display_name, created_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+  return data ? { displayName: data.display_name, createdAt: data.created_at } : null
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   // Without Supabase there is no session to wait for.
   const [loading, setLoading] = useState(isSupabaseConfigured)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  // Whose profile we're loading, so a slow response for a previous user is ignored.
+  const profileUserRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -29,10 +41,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession)
       setLoading(false)
+      const newUser = newSession?.user ?? null
+      if (!newUser) {
+        profileUserRef.current = null
+        setProfile(null)
+        return
+      }
       // INITIAL_SESSION covers users whose session was restored from a previous visit, who never
       // go through SIGNED_IN and could otherwise be left without a profile (shown as "Dreamer").
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && newSession?.user) {
-        void ensureProfile(newSession.user)
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        profileUserRef.current = newUser.id
+        void ensureProfile(newUser)
+          .then(() => fetchProfile(newUser.id))
+          .then((loaded) => {
+            if (profileUserRef.current === newUser.id) setProfile(loaded)
+          })
       }
     })
 
@@ -84,17 +107,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null }
   }
 
+  async function updateDisplayName(displayName: string) {
+    if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
+    const userId = session?.user.id
+    if (!userId) return { error: 'You must be logged in to change your name.' }
+
+    const name = displayName.trim()
+    if (!name) return { error: 'Your display name can’t be empty.' }
+    if (name.length > MAX_DISPLAY_NAME_LENGTH) {
+      return { error: `Keep it to ${MAX_DISPLAY_NAME_LENGTH} characters or fewer.` }
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ display_name: name })
+      .eq('user_id', userId)
+      .select('display_name, created_at')
+      .maybeSingle()
+    if (error) return { error: error.message }
+    if (!data) return { error: 'Your profile could not be found. Try logging out and back in.' }
+
+    setProfile({ displayName: data.display_name, createdAt: data.created_at })
+    return { error: null }
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user: session?.user ?? null,
         session,
         loading,
+        profile,
         signUp,
         signIn,
         signOut,
         requestPasswordReset,
         updatePassword,
+        updateDisplayName,
       }}
     >
       {children}

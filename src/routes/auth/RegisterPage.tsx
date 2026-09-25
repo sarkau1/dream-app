@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
+import { MIN_PASSWORD_LENGTH } from '../../lib/passwords'
 import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
 
 export default function RegisterPage() {
@@ -98,7 +99,7 @@ export default function RegisterPage() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
             className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
             placeholder="At least 6 characters"
           />

@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
-
-const MIN_PASSWORD_LENGTH = 6
+import { MIN_PASSWORD_LENGTH, newPasswordProblem } from '../../lib/passwords'
 
 /**
  * Landing page for the password-reset email. Supabase reads the token from the link and signs
@@ -20,12 +19,9 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`)
-      return
-    }
-    if (password !== confirm) {
-      setError("The passwords don't match.")
+    const problem = newPasswordProblem(password, confirm)
+    if (problem) {
+      setError(problem)
       return
     }
 

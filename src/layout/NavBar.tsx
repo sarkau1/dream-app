@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import Avatar from '../components/Avatar'
 import { useAuth } from '../context/useAuth'
 import { useDreamPosts } from '../context/useDreamPosts'
 import { essenceFromDreams } from '../lib/essence'
@@ -17,7 +18,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export default function NavBar() {
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -42,12 +43,27 @@ export default function NavBar() {
   )
 
   const auth = user ? (
-    <button
-      onClick={handleSignOut}
-      className="rounded-full border border-midnight-700 px-4 py-2 text-sm text-moon-300 hover:text-moon-100"
-    >
-      Log out
-    </button>
+    <>
+      <NavLink
+        to="/profile"
+        onClick={closeMenu}
+        title="Your profile"
+        className={({ isActive }) =>
+          `flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm transition-colors ${
+            isActive ? 'bg-nebula-500/20 text-nebula-300' : 'text-moon-300 hover:text-moon-100'
+          }`
+        }
+      >
+        <Avatar userId={user.id} name={profile?.displayName ?? '?'} />
+        <span className="max-w-[10rem] truncate">{profile?.displayName ?? 'Profile'}</span>
+      </NavLink>
+      <button
+        onClick={handleSignOut}
+        className="rounded-full border border-midnight-700 px-4 py-2 text-sm text-moon-300 hover:text-moon-100"
+      >
+        Log out
+      </button>
+    </>
   ) : (
     <>
       <NavLink

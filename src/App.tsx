@@ -5,6 +5,7 @@ import Home from './routes/Home'
 import NotFound from './routes/NotFound'
 import DreamJournalPage from './routes/journal/DreamJournalPage'
 import DreamWeb from './routes/web/DreamWeb'
+import ProfilePage from './routes/profile/ProfilePage'
 import RegisterPage from './routes/auth/RegisterPage'
 import LoginPage from './routes/auth/LoginPage'
 import ForgotPasswordPage from './routes/auth/ForgotPasswordPage'
@@ -49,6 +50,14 @@ function App() {
                 }
               />
               <Route path="/web" element={<DreamWeb />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PageShell>
