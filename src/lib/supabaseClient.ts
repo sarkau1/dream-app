@@ -9,6 +9,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // AuthContext/DreamPostContext handle the unconfigured state gracefully.
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
+export const NOT_CONFIGURED_ERROR =
+  'This site is not connected to Supabase yet. See README.md to set it up.'
+
 if (!isSupabaseConfigured) {
   console.warn(
     'Supabase is not configured. Copy .env.example to .env.local and fill in your project values to enable registration, login, and dream posting. See README.md.',

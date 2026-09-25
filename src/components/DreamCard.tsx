@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { formatDreamDate } from '../lib/dates'
 import AuthorByline from './AuthorByline'
+import DreamTags from './DreamTags'
 import type { DreamPost } from '../types/dream'
 
 // Rough check for whether line-clamp-4 is likely to cut the body off.
@@ -39,23 +40,7 @@ export default function DreamCard({
         {action}
       </div>
 
-      {(dream.mood || dream.symbols.length > 0) && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {dream.mood && (
-            <span className="rounded-full border border-nebula-400 bg-nebula-500/20 px-2.5 py-0.5 text-xs text-nebula-200">
-              {dream.mood}
-            </span>
-          )}
-          {dream.symbols.map((symbol) => (
-            <span
-              key={symbol}
-              className="rounded-full border border-midnight-700 px-2.5 py-0.5 text-xs text-moon-400"
-            >
-              {symbol}
-            </span>
-          ))}
-        </div>
-      )}
+      <DreamTags dream={dream} className="mt-2" />
 
       {/* Lists show a preview; the full text lives on the dream's own page. */}
       <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-moon-300">{dream.body}</p>

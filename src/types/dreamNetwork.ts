@@ -28,7 +28,9 @@ export interface DreamGraph {
   edges: DreamGraphEdge[]
 }
 
-export interface SampleDreamEntry {
+export interface DreamGraphEntry {
+  /** the dream's id: several dreams can share a date */
+  id: string
   date: string
   note: string
   symbols: string[]

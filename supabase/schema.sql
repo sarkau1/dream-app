@@ -30,6 +30,35 @@ update public.dreams set dreamt_on = created_at::date where dreamt_on is null;
 alter table public.dreams alter column dreamt_on set default current_date;
 alter table public.dreams alter column dreamt_on set not null;
 
+-- Limits the client can't be trusted to enforce. The UI applies the same ones (DreamForm,
+-- RegisterPage) and the mood list matches DREAM_MOODS in src/types/dream.ts. `not valid` means
+-- rows that already break a rule stay as they are; every new or edited row is checked.
+alter table public.dreams drop constraint if exists dreams_title_length;
+alter table public.dreams add constraint dreams_title_length
+  check (char_length(title) between 1 and 200) not valid;
+alter table public.dreams drop constraint if exists dreams_body_length;
+alter table public.dreams add constraint dreams_body_length
+  check (char_length(body) between 1 and 20000) not valid;
+alter table public.dreams drop constraint if exists dreams_mood_known;
+alter table public.dreams add constraint dreams_mood_known
+  check (mood is null or mood in ('Lucid', 'Nightmare', 'Recurring', 'Peaceful', 'Confusing')) not valid;
+alter table public.dreams drop constraint if exists dreams_symbols_count;
+alter table public.dreams add constraint dreams_symbols_count
+  check (coalesce(array_length(symbols, 1), 0) <= 30) not valid;
+alter table public.dreams drop constraint if exists dreams_dreamt_on_not_future;
+-- A day of slack for timezones ahead of the server's.
+alter table public.dreams add constraint dreams_dreamt_on_not_future
+  check (dreamt_on <= current_date + 1) not valid;
+alter table public.profiles drop constraint if exists profiles_display_name_length;
+alter table public.profiles add constraint profiles_display_name_length
+  check (char_length(display_name) between 1 and 50) not valid;
+
+-- The journal lists one user's dreams by night; the feed lists public dreams newest first.
+create index if not exists dreams_journal_idx
+  on public.dreams (user_id, dreamt_on desc, created_at desc);
+create index if not exists dreams_feed_idx
+  on public.dreams (created_at desc) where not is_private;
+
 alter table public.profiles enable row level security;
 alter table public.dreams enable row level security;
 

@@ -1,10 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
-import { useAuth } from './AuthContext'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { isSupabaseConfigured, NOT_CONFIGURED_ERROR, supabase } from '../lib/supabaseClient'
+import { useAuth } from './useAuth'
+import { DreamPostContext } from './useDreamPosts'
 import type { DreamInput, DreamMood, DreamPost } from '../types/dream'
 
-const NOT_CONFIGURED_ERROR =
-  'This site is not connected to Supabase yet. See README.md to set it up.'
 const LOGGED_OUT_ERROR = 'Log in to read dreams.'
 const PAGE_SIZE = 10
 
@@ -55,25 +54,17 @@ async function toDreamPosts(rows: DreamRow[]): Promise<DreamPost[]> {
   }))
 }
 
-interface DreamPostContextValue {
-  dreams: DreamPost[]
-  loading: boolean
-  loadingMore: boolean
-  hasMore: boolean
-  error: string | null
-  refresh: () => Promise<void>
-  loadMore: () => Promise<void>
-  createDream: (input: DreamInput) => Promise<{ error: string | null }>
-  updateDream: (id: string, input: DreamInput) => Promise<{ error: string | null }>
-  deleteDream: (id: string) => Promise<{ error: string | null }>
-  getDream: (id: string) => Promise<{ dream: DreamPost | null; error: string | null }>
-  myDreams: DreamPost[]
-  loadingMyDreams: boolean
-  myDreamsError: string | null
-  refreshMyDreams: () => Promise<void>
+
+// Journal order: by the night dreamt, newest first, then by when it was written down.
+function byDreamtOnDesc(a: DreamPost, b: DreamPost) {
+  if (a.dreamtOn !== b.dreamtOn) return a.dreamtOn < b.dreamtOn ? 1 : -1
+  return byCreatedAtDesc(a, b)
 }
 
-const DreamPostContext = createContext<DreamPostContextValue | undefined>(undefined)
+// Feed order: newest post first.
+function byCreatedAtDesc(a: DreamPost, b: DreamPost) {
+  return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0
+}
 
 export function DreamPostProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth()
@@ -88,11 +79,16 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
   const [myDreams, setMyDreams] = useState<DreamPost[]>([])
   const [loadingMyDreams, setLoadingMyDreams] = useState(false)
   const [myDreamsError, setMyDreamsError] = useState<string | null>(null)
-  const pageRef = useRef(0)
+  // Bumped on every refresh so a response that arrives after the user changed (e.g. signed out
+  // mid-request) or after a newer refresh started is dropped instead of overwriting fresh state.
+  const feedGenRef = useRef(0)
+  const myDreamsGenRef = useRef(0)
 
   const refreshMyDreams = useCallback(async () => {
+    const gen = ++myDreamsGenRef.current
     if (!isSupabaseConfigured || !userId) {
       setMyDreams([])
+      setLoadingMyDreams(false)
       return
     }
 
@@ -104,9 +100,11 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       // The journal is a diary: order by the night dreamt, newest first.
       .order('dreamt_on', { ascending: false })
       .order('created_at', { ascending: false })
+    const posts = error ? [] : await toDreamPosts(data ?? [])
+    if (gen !== myDreamsGenRef.current) return
 
     setMyDreamsError(error?.message ?? null)
-    if (!error) setMyDreams(await toDreamPosts(data ?? []))
+    if (!error) setMyDreams(posts)
     setLoadingMyDreams(false)
   }, [userId])
 
@@ -115,6 +113,9 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
   }, [refreshMyDreams])
 
   const refresh = useCallback(async () => {
+    const gen = ++feedGenRef.current
+    setLoadingMore(false)
+
     if (!isSupabaseConfigured) {
       setDreams([])
       setError(NOT_CONFIGURED_ERROR)
@@ -134,14 +135,15 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
 
     setLoading(true)
     setError(null)
-    pageRef.current = 0
 
     const { data: dreamRows, error: dreamsError } = await supabase
       .from('dreams')
       .select(DREAM_COLUMNS)
       .order('created_at', { ascending: false })
       .eq('is_private', false)
-      .range(0, PAGE_SIZE - 1)
+      .limit(PAGE_SIZE)
+    const posts = dreamsError ? [] : await toDreamPosts(dreamRows ?? [])
+    if (gen !== feedGenRef.current) return
 
     if (dreamsError) {
       setError(dreamsError.message)
@@ -149,23 +151,28 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    setDreams(await toDreamPosts(dreamRows ?? []))
-    setHasMore((dreamRows ?? []).length === PAGE_SIZE)
+    setDreams(posts)
+    setHasMore(posts.length === PAGE_SIZE)
     setLoading(false)
   }, [userId, authLoading])
 
   const loadMore = useCallback(async () => {
-    if (!isSupabaseConfigured || !userId || loadingMore || !hasMore) return
+    if (!isSupabaseConfigured || !userId || loadingMore || !hasMore || dreams.length === 0) return
 
+    const gen = feedGenRef.current
     setLoadingMore(true)
-    const nextPage = pageRef.current + 1
-    const from = nextPage * PAGE_SIZE
+    // Page by "older than the last one shown" rather than by offset, so dreams posted while
+    // someone is reading don't shift the pages and show up twice.
+    const oldest = dreams[dreams.length - 1].createdAt
     const { data: dreamRows, error: dreamsError } = await supabase
       .from('dreams')
       .select(DREAM_COLUMNS)
       .order('created_at', { ascending: false })
       .eq('is_private', false)
-      .range(from, from + PAGE_SIZE - 1)
+      .lt('created_at', oldest)
+      .limit(PAGE_SIZE)
+    const newDreams = dreamsError ? [] : await toDreamPosts(dreamRows ?? [])
+    if (gen !== feedGenRef.current) return
 
     if (dreamsError) {
       setError(dreamsError.message)
@@ -173,26 +180,50 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    pageRef.current = nextPage
-    const newDreams = await toDreamPosts(dreamRows ?? [])
-    setDreams((prev) => [...prev, ...newDreams])
-    setHasMore((dreamRows ?? []).length === PAGE_SIZE)
+    setDreams((prev) => {
+      const seen = new Set(prev.map((dream) => dream.id))
+      return [...prev, ...newDreams.filter((dream) => !seen.has(dream.id))]
+    })
+    setHasMore(newDreams.length === PAGE_SIZE)
     setLoadingMore(false)
-  }, [userId, hasMore, loadingMore])
+  }, [userId, hasMore, loadingMore, dreams])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
+  // Applies a saved dream to both lists in place, so creating, editing or sharing one doesn't
+  // refetch everything and throw away the feed pages already loaded.
+  function applySaved(post: DreamPost) {
+    setMyDreams((prev) => [...prev.filter((dream) => dream.id !== post.id), post].sort(byDreamtOnDesc))
+    setDreams((prev) => {
+      const rest = prev.filter((dream) => dream.id !== post.id)
+      if (post.isPrivate) return rest
+      // Only slot it in if it falls inside the loaded range; otherwise "Load more" will reach it.
+      const oldestLoaded = prev[prev.length - 1]?.createdAt
+      if (hasMore && oldestLoaded && post.createdAt < oldestLoaded) return rest
+      return [...rest, post].sort(byCreatedAtDesc)
+    })
+  }
+
+  function applyDeleted(id: string) {
+    setMyDreams((prev) => prev.filter((dream) => dream.id !== id))
+    setDreams((prev) => prev.filter((dream) => dream.id !== id))
+  }
+
   async function createDream(input: DreamInput) {
     if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
     if (!userId) return { error: 'You must be logged in to post a dream.' }
 
-    const { error } = await supabase.from('dreams').insert({ user_id: userId, ...toRow(input) })
+    const { data, error } = await supabase
+      .from('dreams')
+      .insert({ user_id: userId, ...toRow(input) })
+      .select(DREAM_COLUMNS)
+      .single()
     if (error) return { error: error.message }
 
-    await refresh()
-    await refreshMyDreams()
+    const [post] = await toDreamPosts([data])
+    applySaved(post)
     return { error: null }
   }
 
@@ -200,15 +231,18 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
     if (!userId) return { error: 'You must be logged in to edit a dream.' }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('dreams')
       .update(toRow(input))
       .eq('id', id)
       .eq('user_id', userId)
+      .select(DREAM_COLUMNS)
+      .maybeSingle()
     if (error) return { error: error.message }
+    if (!data) return { error: 'That dream no longer exists.' }
 
-    await refresh()
-    await refreshMyDreams()
+    const [post] = await toDreamPosts([data])
+    applySaved(post)
     return { error: null }
   }
 
@@ -219,8 +253,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('dreams').delete().eq('id', id).eq('user_id', userId)
     if (error) return { error: error.message }
 
-    await refresh()
-    await refreshMyDreams()
+    applyDeleted(id)
     return { error: null }
   }
 
@@ -268,10 +301,4 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       {children}
     </DreamPostContext.Provider>
   )
-}
-
-export function useDreamPosts() {
-  const ctx = useContext(DreamPostContext)
-  if (!ctx) throw new Error('useDreamPosts must be used within a DreamPostProvider')
-  return ctx
 }

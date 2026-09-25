@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
+import { MAX_DISPLAY_NAME_LENGTH } from '../../types/dream'
 
 export default function RegisterPage() {
   const { signUp } = useAuth()
@@ -65,6 +66,7 @@ export default function RegisterPage() {
             id="register-name"
             autoComplete="nickname"
             value={displayName}
+            maxLength={MAX_DISPLAY_NAME_LENGTH}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="How should others see you?"
             className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"

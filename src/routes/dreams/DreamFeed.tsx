@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import DreamCard from '../../components/DreamCard'
 import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
-import { useAuth } from '../../context/AuthContext'
-import { useDreamPosts } from '../../context/DreamPostContext'
+import { useAuth } from '../../context/useAuth'
+import { useDreamPosts } from '../../context/useDreamPosts'
 
 export default function DreamFeed() {
   const { user, loading: authLoading } = useAuth()

@@ -1,29 +1,16 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/auth-js'
 import { clearAllDrafts } from '../lib/drafts'
-import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
-
-const NOT_CONFIGURED_ERROR =
-  'This site is not connected to Supabase yet. See README.md to set it up.'
-
-interface AuthContextValue {
-  user: User | null
-  session: Session | null
-  loading: boolean
-  signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signOut: () => Promise<void>
-  requestPasswordReset: (email: string) => Promise<{ error: string | null }>
-  updatePassword: (password: string) => Promise<{ error: string | null }>
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+import { isSupabaseConfigured, NOT_CONFIGURED_ERROR, supabase } from '../lib/supabaseClient'
+import { MAX_DISPLAY_NAME_LENGTH } from '../types/dream'
+import { AuthContext } from './useAuth'
 
 // Makes sure the user has a profile row, which is where the Dream Feed gets author names from.
 // Creates it if missing and never overwrites an existing one.
 async function ensureProfile(user: User) {
   // Deliberately no fallback to the email address: display names are visible to every user.
-  const displayName = (user.user_metadata?.display_name as string | undefined)?.trim() || 'Dreamer'
+  const displayName = (user.user_metadata?.display_name as string | undefined)?.trim().slice(0, MAX_DISPLAY_NAME_LENGTH) ||
+    'Dreamer'
   await supabase
     .from('profiles')
     .upsert({ user_id: user.id, display_name: displayName }, { onConflict: 'user_id', ignoreDuplicates: true })
@@ -31,21 +18,17 @@ async function ensureProfile(user: User) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Without Supabase there is no session to wait for.
+  const [loading, setLoading] = useState(isSupabaseConfigured)
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setLoading(false)
-      return
-    }
+    if (!isSupabaseConfigured) return
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
-
+    // Fires INITIAL_SESSION straight away with the restored session (or null), so there's no
+    // separate getSession() call to race against.
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession)
+      setLoading(false)
       // INITIAL_SESSION covers users whose session was restored from a previous visit, who never
       // go through SIGNED_IN and could otherwise be left without a profile (shown as "Dreamer").
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && newSession?.user) {
@@ -117,10 +100,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
-  return ctx
 }

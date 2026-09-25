@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import DreamForm from '../../components/DreamForm'
-import { useAuth } from '../../context/AuthContext'
-import { useDreamPosts } from '../../context/DreamPostContext'
+import { useAuth } from '../../context/useAuth'
+import { useDreamPosts } from '../../context/useDreamPosts'
 import AuthorByline from '../../components/AuthorByline'
+import DreamTags from '../../components/DreamTags'
 import { draftKey } from '../../lib/drafts'
 import type { DreamPost } from '../../types/dream'
 
 export default function DreamDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { getDream, updateDream, deleteDream } = useDreamPosts()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [dream, setDream] = useState<DreamPost | null>(null)
   const [loading, setLoading] = useState(true)
@@ -21,12 +23,18 @@ export default function DreamDetailPage() {
 
   useEffect(() => {
     if (!id) return
+    // Ignore the answer if the user has already moved on to another dream (or signed out).
+    let cancelled = false
     setLoading(true)
     getDream(id).then(({ dream, error }) => {
+      if (cancelled) return
       setDream(dream)
       setError(error)
       setLoading(false)
     })
+    return () => {
+      cancelled = true
+    }
   }, [id, getDream])
 
   async function handleDelete() {
@@ -44,8 +52,19 @@ export default function DreamDetailPage() {
     navigate('/journal')
   }
 
-  if (loading) {
+  if (loading || authLoading) {
     return <p className="text-moon-400">Loading dream...</p>
+  }
+
+  if (!user) {
+    return (
+      <p className="text-moon-400">
+        <Link to="/login" state={{ from: location }} className="text-nebula-300 hover:text-nebula-200">
+          Log in
+        </Link>{' '}
+        to read this dream.
+      </p>
+    )
   }
 
   if (error && !dream) {
@@ -127,23 +146,7 @@ export default function DreamDetailPage() {
             )}
           </div>
 
-          {(dream.mood || dream.symbols.length > 0) && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {dream.mood && (
-                <span className="rounded-full border border-nebula-400 bg-nebula-500/20 px-3 py-1 text-xs text-nebula-200">
-                  {dream.mood}
-                </span>
-              )}
-              {dream.symbols.map((symbol) => (
-                <span
-                  key={symbol}
-                  className="rounded-full border border-midnight-700 px-3 py-1 text-xs text-moon-400"
-                >
-                  {symbol}
-                </span>
-              ))}
-            </div>
-          )}
+          <DreamTags dream={dream} large className="mt-3" />
 
           <p className="mt-4 whitespace-pre-wrap text-moon-300">{dream.body}</p>
           {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}

@@ -2,15 +2,16 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { buildDreamGraph } from '../../lib/buildDreamGraph'
 import DreamNetworkGraph from '../../components/DreamNetworkGraph'
-import { useAuth } from '../../context/AuthContext'
-import { useDreamPosts } from '../../context/DreamPostContext'
-import type { SampleDreamEntry } from '../../types/dreamNetwork'
+import { useAuth } from '../../context/useAuth'
+import { useDreamPosts } from '../../context/useDreamPosts'
+import type { DreamGraphEntry } from '../../types/dreamNetwork'
 import type { DreamPost } from '../../types/dream'
 
-function toGraphEntries(dreams: DreamPost[]): SampleDreamEntry[] {
+function toGraphEntries(dreams: DreamPost[]): DreamGraphEntry[] {
   return dreams
     .filter((dream) => dream.symbols.length > 0)
     .map((dream) => ({
+      id: dream.id,
       date: dream.dreamtOn,
       note: dream.title,
       symbols: dream.symbols,
@@ -22,7 +23,13 @@ export default function DreamWeb() {
   const { myDreams, loadingMyDreams } = useDreamPosts()
 
   const myEntries = useMemo(() => toGraphEntries(myDreams), [myDreams])
-  const graph = useMemo(() => buildDreamGraph(myEntries), [myEntries])
+  // Rebuild only when something the graph shows changes: sharing or unsharing a dream hands
+  // us a new myDreams array, but shouldn't restart the layout.
+  const entriesJson = JSON.stringify(myEntries)
+  const graph = useMemo(
+    () => buildDreamGraph(JSON.parse(entriesJson) as DreamGraphEntry[]),
+    [entriesJson],
+  )
 
   const entryCount = graph.nodes.filter((n) => n.type === 'entry').length
   const symbolCount = graph.nodes.filter((n) => n.type === 'symbol').length
@@ -69,8 +76,7 @@ export default function DreamWeb() {
               logged
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-nebula-400" /> {symbolCount} recurring
-              symbols
+              <span className="h-2.5 w-2.5 rounded-full bg-nebula-400" /> {symbolCount} symbols
             </span>
             <span>Drag nodes to rearrange · scroll to zoom · drag background to pan</span>
           </div>

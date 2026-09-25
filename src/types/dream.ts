@@ -1,6 +1,12 @@
 export const DREAM_MOODS = ['Lucid', 'Nightmare', 'Recurring', 'Peaceful', 'Confusing'] as const
 export type DreamMood = (typeof DREAM_MOODS)[number]
 
+// Mirrors the check constraints in supabase/schema.sql; change both together.
+export const MAX_TITLE_LENGTH = 200
+export const MAX_BODY_LENGTH = 20000
+export const MAX_SYMBOLS = 30
+export const MAX_DISPLAY_NAME_LENGTH = 50
+
 /** The user-editable fields of a dream, as written by DreamForm. */
 export interface DreamInput {
   title: string

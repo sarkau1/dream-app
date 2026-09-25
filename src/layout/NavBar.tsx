@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { useDreamPosts } from '../context/DreamPostContext'
+import { useAuth } from '../context/useAuth'
+import { useDreamPosts } from '../context/useDreamPosts'
 import { essenceFromDreams } from '../lib/essence'
 
 const links = [
@@ -18,7 +18,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function NavBar() {
   const { user, signOut } = useAuth()
-  const { myDreams } = useDreamPosts()
+  const { myDreams, loadingMyDreams } = useDreamPosts()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
@@ -35,7 +35,8 @@ export default function NavBar() {
       className="inline-flex items-center gap-1.5 rounded-full border border-aurora-400/30 bg-aurora-400/10 px-3 py-1.5 text-xs font-medium text-aurora-300"
     >
       <span aria-hidden="true">✦</span>
-      {essenceFromDreams(myDreams)}
+      {/* Don't flash 0 while the journal is still loading. */}
+      {loadingMyDreams && myDreams.length === 0 ? '…' : essenceFromDreams(myDreams)}
       <span className="sr-only">Dream Essence</span>
     </span>
   )

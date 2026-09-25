@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import DreamCard from '../../components/DreamCard'
 import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
-import { useDreamPosts } from '../../context/DreamPostContext'
+import { useDreamPosts } from '../../context/useDreamPosts'
 import { formatDreamMonth } from '../../lib/dates'
 import type { DreamPost } from '../../types/dream'
 
@@ -88,7 +88,9 @@ export default function DreamJournalPage() {
     () => ({
       shared: myDreams.filter((dream) => !dream.isPrivate).length,
       topMood: mostCommon(myDreams.flatMap((dream) => (dream.mood ? [dream.mood] : []))),
-      topSymbol: mostCommon(myDreams.flatMap((dream) => dream.symbols)),
+      topSymbol: mostCommon(
+        myDreams.flatMap((dream) => dream.symbols.map((symbol) => symbol.toLowerCase())),
+      ),
     }),
     [myDreams],
   )

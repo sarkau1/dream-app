@@ -48,10 +48,17 @@ export default function DreamNetworkGraph({ graph }: Props) {
   const sizeRef = useRef({ width: 0, height: 0 })
   const [tooltip, setTooltip] = useState<Tooltip | null>(null)
 
-  // Reset the simulation whenever a new graph comes in (e.g. "Regenerate" was clicked).
+  // A new graph comes in whenever the dreams change. Nodes that were already on screen keep their
+  // positions so editing one dream nudges the layout instead of scattering it; only a graph with
+  // brand-new nodes gets a full reheat.
   useEffect(() => {
-    nodesRef.current = graph.nodes
-    alphaRef.current = 1
+    const previous = new Map(nodesRef.current.map((n) => [n.id, n]))
+    const added = graph.nodes.some((node) => !previous.has(node.id))
+    nodesRef.current = graph.nodes.map((node) => {
+      const old = previous.get(node.id)
+      return old && old !== node ? { ...node, x: old.x, y: old.y } : node
+    })
+    alphaRef.current = added ? 1 : Math.max(alphaRef.current, 0.3)
   }, [graph])
 
   useEffect(() => {
@@ -67,7 +74,9 @@ export default function DreamNetworkGraph({ graph }: Props) {
     const ctx: CanvasRenderingContext2D = contextMaybe
 
     let raf = 0
-    let disposed = false
+    // Once the layout has settled, only redraw after something visible changed (hover, drag,
+    // pan, zoom, resize) instead of repainting an unchanged canvas every frame.
+    let dirty = true
     const nodeById = new Map(nodesRef.current.map((n) => [n.id, n]))
 
     function resize() {
@@ -79,6 +88,7 @@ export default function DreamNetworkGraph({ graph }: Props) {
       canvas.style.width = `${rect.width}px`
       canvas.style.height = `${rect.height}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      dirty = true
     }
 
     const resizeObserver = new ResizeObserver(resize)
@@ -106,7 +116,8 @@ export default function DreamNetworkGraph({ graph }: Props) {
     function tick() {
       const nodes = nodesRef.current
       const alpha = alphaRef.current
-      if (alpha > ALPHA_MIN) {
+      const moving = alpha > ALPHA_MIN
+      if (moving) {
         for (let i = 0; i < nodes.length; i += 1) {
           const a = nodes[i]
           if (a.pinned) continue
@@ -165,7 +176,10 @@ export default function DreamNetworkGraph({ graph }: Props) {
         alphaRef.current *= ALPHA_DECAY
       }
 
-      render()
+      if (moving || dirty) {
+        render()
+        dirty = false
+      }
       raf = requestAnimationFrame(tick)
     }
 
@@ -261,6 +275,7 @@ export default function DreamNetworkGraph({ graph }: Props) {
       const sx = e.clientX - rect.left
       const sy = e.clientY - rect.top
       const drag = draggingRef.current
+      dirty = true
 
       if (drag && 'node' in drag) {
         const world = screenToWorld(sx, sy)
@@ -291,11 +306,12 @@ export default function DreamNetworkGraph({ graph }: Props) {
         drag.node.pinned = false
       }
       draggingRef.current = null
-      canvas.releasePointerCapture(e.pointerId)
+      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId)
     }
 
     function handleWheel(e: WheelEvent) {
       e.preventDefault()
+      dirty = true
       const cam = cameraRef.current
       const rect = canvas.getBoundingClientRect()
       const before = screenToWorld(e.clientX - rect.left, e.clientY - rect.top)
@@ -309,19 +325,20 @@ export default function DreamNetworkGraph({ graph }: Props) {
     canvas.addEventListener('pointerdown', handlePointerDown)
     canvas.addEventListener('pointermove', handlePointerMove)
     canvas.addEventListener('pointerup', handlePointerUp)
+    // The browser can cancel a drag (touch scroll, alt-tab); without this the node stays pinned.
+    canvas.addEventListener('pointercancel', handlePointerUp)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
 
     raf = requestAnimationFrame(tick)
 
     return () => {
-      disposed = true
       cancelAnimationFrame(raf)
       resizeObserver.disconnect()
       canvas.removeEventListener('pointerdown', handlePointerDown)
       canvas.removeEventListener('pointermove', handlePointerMove)
       canvas.removeEventListener('pointerup', handlePointerUp)
+      canvas.removeEventListener('pointercancel', handlePointerUp)
       canvas.removeEventListener('wheel', handleWheel)
-      void disposed
     }
   }, [graph])
 

@@ -1,5 +1,4 @@
-import type { DreamGraph, DreamGraphEdge, DreamGraphNode } from '../types/dreamNetwork'
-import type { SampleDreamEntry } from '../types/dreamNetwork'
+import type { DreamGraph, DreamGraphEdge, DreamGraphEntry, DreamGraphNode } from '../types/dreamNetwork'
 
 function makeNode(id: string, type: DreamGraphNode['type'], label: string, extra: Partial<DreamGraphNode> = {}): DreamGraphNode {
   const angle = Math.random() * Math.PI * 2
@@ -24,18 +23,21 @@ function makeNode(id: string, type: DreamGraphNode['type'], label: string, extra
  * enough symbols also get a direct edge, so tight clusters read as connected even when no
  * single symbol dominates.
  */
-export function buildDreamGraph(entries: SampleDreamEntry[]): DreamGraph {
+export function buildDreamGraph(entries: DreamGraphEntry[]): DreamGraph {
   const nodes = new Map<string, DreamGraphNode>()
   const edges: DreamGraphEdge[] = []
   const entrySymbols = new Map<string, Set<string>>()
 
   for (const entry of entries) {
-    const entryId = `entry:${entry.date}`
+    // Keyed by dream, not by date: two dreams from the same night are two nodes.
+    const entryId = `entry:${entry.id}`
     nodes.set(entryId, makeNode(entryId, 'entry', entry.date, { date: entry.date, note: entry.note }))
     entrySymbols.set(entryId, new Set())
 
     for (const symbol of entry.symbols) {
-      const symbolId = `symbol:${symbol}`
+      // Case-insensitive, so older dreams tagged "Water" join the ones tagged "water".
+      const symbolId = `symbol:${symbol.toLowerCase()}`
+      if (entrySymbols.get(entryId)!.has(symbolId)) continue
       if (!nodes.has(symbolId)) {
         nodes.set(symbolId, makeNode(symbolId, 'symbol', symbol))
       }

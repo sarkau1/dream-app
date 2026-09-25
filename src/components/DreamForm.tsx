@@ -1,7 +1,14 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import { todayLocal } from '../lib/dates'
-import { DREAM_MOODS, type DreamInput, type DreamMood } from '../types/dream'
+import {
+  DREAM_MOODS,
+  MAX_BODY_LENGTH,
+  MAX_SYMBOLS,
+  MAX_TITLE_LENGTH,
+  type DreamInput,
+  type DreamMood,
+} from '../types/dream'
 
 interface DreamFormProps {
   initialValues?: Partial<DreamInput>
@@ -10,7 +17,8 @@ interface DreamFormProps {
   submitLabel: string
   submittingLabel: string
   onSubmit: (values: DreamInput) => Promise<{ error: string | null }>
-  onSuccess: () => void
+  /** Called with the values that were saved. */
+  onSuccess: (values: DreamInput) => void
   onCancel?: () => void
 }
 
@@ -84,9 +92,14 @@ export default function DreamForm({
   }
 
   function addSymbol() {
-    const value = symbolInput.trim()
+    // Lowercased so "Water" and "water" count as the same sign in the stats and the Dream Web.
+    const value = symbolInput.trim().replace(/\s+/g, ' ').toLowerCase()
     if (!value || symbols.includes(value)) {
       setSymbolInput('')
+      return
+    }
+    if (symbols.length >= MAX_SYMBOLS) {
+      setError(`A dream can have up to ${MAX_SYMBOLS} signs.`)
       return
     }
     setSymbols((prev) => [...prev, value])
@@ -106,11 +119,15 @@ export default function DreamForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !body.trim()) return
+    if (!title.trim() || !body.trim()) {
+      setError('Give your dream a title and describe what happened.')
+      return
+    }
 
     setSubmitting(true)
     setError(null)
-    const { error } = await onSubmit({ ...values, title: title.trim(), body: body.trim() })
+    const submitted = { ...values, title: title.trim(), body: body.trim() }
+    const { error } = await onSubmit(submitted)
     setSubmitting(false)
 
     if (error) {
@@ -119,7 +136,7 @@ export default function DreamForm({
       return
     }
     if (draftKey) clearDraft(draftKey)
-    onSuccess()
+    onSuccess(submitted)
   }
 
   return (
@@ -155,6 +172,8 @@ export default function DreamForm({
         <input
           id="dream-title"
           value={title}
+          required
+          maxLength={MAX_TITLE_LENGTH}
           onChange={(e) => setTitle(e.target.value)}
           className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"
           placeholder="Give your dream a title"
@@ -168,6 +187,8 @@ export default function DreamForm({
         <textarea
           id="dream-body"
           value={body}
+          required
+          maxLength={MAX_BODY_LENGTH}
           onChange={(e) => setBody(e.target.value)}
           rows={8}
           className="mt-1 w-full rounded-lg border border-midnight-700 bg-midnight-900/60 px-3 py-2 text-moon-100 placeholder:text-moon-500 focus:border-nebula-400 focus:outline-none"

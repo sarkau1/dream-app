@@ -1,8 +1,7 @@
-import { useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import DreamForm from '../../components/DreamForm'
-import { useAuth } from '../../context/AuthContext'
-import { useDreamPosts } from '../../context/DreamPostContext'
+import { useAuth } from '../../context/useAuth'
+import { useDreamPosts } from '../../context/useDreamPosts'
 import { draftKey } from '../../lib/drafts'
 import { ESSENCE_LUCID_DREAM } from '../../lib/essence'
 
@@ -14,7 +13,6 @@ export default function NewDreamPage() {
   // Writing from the Journal starts private and returns there; sharing from the Feed starts public.
   const fromJournal = searchParams.get('from') === 'journal'
   const backTo = fromJournal ? '/journal' : '/dreams'
-  const saved = useRef({ isPrivate: fromJournal, essenceEarned: 0 })
 
   return (
     <div className="max-w-xl space-y-6">
@@ -37,20 +35,13 @@ export default function NewDreamPage() {
         draftKey={user ? draftKey(user.id, null) : undefined}
         submitLabel="Save dream"
         submittingLabel="Saving..."
-        onSubmit={async (values) => {
-          const result = await createDream(values)
-          if (!result.error) {
+        onSubmit={createDream}
+        onSuccess={(values) =>
+          // A private dream would be invisible in the Feed, so land in the Journal instead.
+          navigate(values.isPrivate ? '/journal' : backTo, {
             // The total itself is derived from saved dreams (see lib/essence); this only drives
             // the "+N" notice on the page we land on.
-            const essenceEarned = values.mood === 'Lucid' ? ESSENCE_LUCID_DREAM : 0
-            saved.current = { isPrivate: values.isPrivate, essenceEarned }
-          }
-          return result
-        }}
-        // A private dream would be invisible in the Feed, so land in the Journal instead.
-        onSuccess={() =>
-          navigate(saved.current.isPrivate ? '/journal' : backTo, {
-            state: { essenceEarned: saved.current.essenceEarned },
+            state: { essenceEarned: values.mood === 'Lucid' ? ESSENCE_LUCID_DREAM : 0 },
           })
         }
       />
