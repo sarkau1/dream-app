@@ -18,7 +18,6 @@ export interface DreamPostContextValue {
   loadMore: () => Promise<void>
   createDream: (input: DreamInput) => Result
   updateDream: (id: string, input: DreamInput) => Result
-  setDreamPrivacy: (id: string, isPrivate: boolean) => Result
   deleteDream: (id: string) => Result
   getDream: (id: string) => Promise<{ dream: DreamPost | null; error: string | null }>
   /** Ids of the user's dreams whose full text contains `query` (case-insensitive). */

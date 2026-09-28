@@ -9,7 +9,6 @@ import { primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
 import { FormError } from '../../components/TextField'
-import { useSubmit } from '../../lib/useSubmit'
 
 type JournalFilter = 'all' | 'private' | 'shared'
 
@@ -39,44 +38,18 @@ function mostCommon(values: string[]): string | null {
   return best
 }
 
-function ShareToggle({ dream }: { dream: DreamSummary }) {
-  const { setDreamPrivacy } = useDreamPosts()
-  const { pending: saving, error, run } = useSubmit()
-  const shared = !dream.isPrivate
-  const toggle = () => run(() => setDreamPrivacy(dream.id, shared))
-
+// Read-only here; whether a dream is shared is changed when editing it.
+function PrivacyBadge({ isPrivate }: { isPrivate: boolean }) {
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={shared}
-        onClick={toggle}
-        disabled={saving}
-        title={
-          shared
-            ? 'Visible in the Dream Feed. Click to make private.'
-            : 'Only you can see this. Click to share it in the Dream Feed.'
-        }
-        className="flex items-center gap-2 text-xs text-moon-400 disabled:opacity-50"
-      >
-        <span className={shared ? 'text-nebula-200' : 'text-amber-200'}>
-          {saving ? 'Saving...' : shared ? 'In feed' : 'Private'}
-        </span>
-        <span
-          className={`relative h-5 w-9 rounded-full transition-colors ${
-            shared ? 'bg-nebula-500' : 'bg-amber-400/30'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
-              shared ? 'left-[18px]' : 'left-0.5'
-            }`}
-          />
-        </span>
-      </button>
-      {error && <span className="text-xs text-rose-400">{error}</span>}
-    </div>
+    <span
+      className={`rounded-full border px-2.5 py-0.5 text-xs ${
+        isPrivate
+          ? 'border-amber-400/40 bg-amber-400/10 text-amber-200'
+          : 'border-nebula-400/40 bg-nebula-500/10 text-nebula-200'
+      }`}
+    >
+      {isPrivate ? 'Private' : 'In feed'}
+    </span>
   )
 }
 
@@ -248,7 +221,7 @@ export default function DreamJournalPage() {
                   key={dream.id}
                   dream={dream}
                   showAuthor={false}
-                  action={<ShareToggle dream={dream} />}
+                  action={<PrivacyBadge isPrivate={dream.isPrivate} />}
                 />
               ))}
             </ul>
@@ -274,7 +247,7 @@ export default function DreamJournalPage() {
         <div>
           <h1 className="text-3xl font-semibold text-moon-100">Dream Journal</h1>
           <p className="mt-1 text-sm text-moon-400">
-            All your dreams, private by default. Flip the switch to share one in the{' '}
+            All your dreams, private by default. Edit a dream to share it in the{' '}
             <Link to="/dreams" className="text-nebula-300 hover:text-nebula-200">
               Dream Feed
             </Link>

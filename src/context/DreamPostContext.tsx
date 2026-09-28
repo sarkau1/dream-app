@@ -324,12 +324,6 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     [writeDream],
   )
 
-  // The journal's share switch only has a summary, so it changes just this one column.
-  const setDreamPrivacy = useCallback(
-    (id: string, isPrivate: boolean) => writeDream(id, { is_private: isPrivate }),
-    [writeDream],
-  )
-
   const deleteDream = useCallback(
     async (id: string) => {
       if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
@@ -407,7 +401,6 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       loadMore,
       createDream,
       updateDream,
-      setDreamPrivacy,
       deleteDream,
       getDream,
       searchMyDreamBodies,
@@ -429,7 +422,6 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       loadMore,
       createDream,
       updateDream,
-      setDreamPrivacy,
       deleteDream,
       getDream,
       searchMyDreamBodies,

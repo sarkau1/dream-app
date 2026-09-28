@@ -331,20 +331,33 @@ export default function DreamForm({
         )}
       </div>
 
-      {/* The whole row is the label, so it's one big tap target on phones. */}
-      <label
-        htmlFor="dream-private"
-        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-midnight-700 bg-midnight-900/40 px-3.5 py-2.5 text-sm text-moon-300 transition-colors hover:border-midnight-600"
+      {/* The whole row is the switch, so it's one big tap target on phones. */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={!isPrivate}
+        onClick={() => setIsPrivate(!isPrivate)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-midnight-700 bg-midnight-900/40 px-3.5 py-2.5 text-left text-sm transition-colors hover:border-midnight-600"
       >
-        <input
-          id="dream-private"
-          type="checkbox"
-          checked={isPrivate}
-          onChange={(e) => setIsPrivate(e.target.checked)}
-          className="h-5 w-5 shrink-0 accent-nebula-500"
-        />
-        Keep this dream private (only visible to you)
-      </label>
+        <span>
+          <span className="block text-moon-100">Share in the Dream Feed</span>
+          <span className={`block text-xs ${isPrivate ? 'text-amber-200' : 'text-nebula-200'}`}>
+            {isPrivate ? 'Private: only you can see this dream' : 'Visible to everyone signed in'}
+          </span>
+        </span>
+        <span
+          aria-hidden
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+            isPrivate ? 'bg-amber-400/30' : 'bg-nebula-500'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+              isPrivate ? 'left-0.5' : 'left-[22px]'
+            }`}
+          />
+        </span>
+      </button>
 
       <FormError message={error} />
 
