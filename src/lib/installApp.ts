@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react'
 
-// Chrome and Edge fire `beforeinstallprompt` when the site can be installed as an app. It can
-// fire before any page that offers an install button has mounted, so it's caught here from
-// startup (see main.tsx) and kept until used. Safari never fires it: there, installing is
-// Share -> Add to Home Screen, and no button is shown.
+// Chrome and Edge fire `beforeinstallprompt` when the site can be installed as an app, often only
+// after the visitor has used the site for a little while. It can fire before any page that
+// offers an install button has mounted, so it's caught here from startup (see main.tsx) and kept
+// until used. Other browsers never fire it; for them the button shows how to install by hand.
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -11,6 +11,7 @@ interface InstallPromptEvent extends Event {
 }
 
 let deferred: InstallPromptEvent | null = null
+let installed = false
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach((listener) => listener())
 
@@ -23,6 +24,7 @@ export function listenForInstallPrompt() {
   })
   window.addEventListener('appinstalled', () => {
     deferred = null
+    installed = true
     notify()
   })
 }
@@ -32,9 +34,30 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
-/** Whether the browser will install the app right now, and a function that asks it to. */
+/** True when running as the installed app rather than in a browser tab. */
+export function isRunningInstalled(): boolean {
+  const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
+  return iosStandalone || window.matchMedia('(display-mode: standalone)').matches
+}
+
+export type InstallPlatform = 'ios' | 'android' | 'desktop'
+
+/** Which by-hand install steps to show when the browser can't install in one tap. */
+export function installPlatform(userAgent = navigator.userAgent): InstallPlatform {
+  // iPadOS reports itself as a Mac, but only touch devices have touch points.
+  if (/iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && navigator.maxTouchPoints > 1)) {
+    return 'ios'
+  }
+  return /Android/.test(userAgent) ? 'android' : 'desktop'
+}
+
+/**
+ * Whether the browser will install the app in one tap right now (`canPrompt`), a function that
+ * asks it to, and whether the app is already installed and running (nothing to offer then).
+ */
 export function useInstallApp() {
   const prompt = useSyncExternalStore(subscribe, () => deferred)
+  const justInstalled = useSyncExternalStore(subscribe, () => installed)
   async function install() {
     if (!deferred) return
     const event = deferred
@@ -44,5 +67,9 @@ export function useInstallApp() {
     deferred = null
     notify()
   }
-  return { canInstall: prompt !== null, install }
+  return {
+    canPrompt: prompt !== null,
+    installed: justInstalled || isRunningInstalled(),
+    install,
+  }
 }

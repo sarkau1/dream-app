@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import InstallAppButton from '../components/InstallAppButton'
 import Leaderboard from '../components/Leaderboard'
 import { cardClass, primaryButtonClass, secondaryButtonClass } from '../styles/ui'
-import { useInstallApp } from '../lib/installApp'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 const sections = [
@@ -26,7 +26,6 @@ const sections = [
 export default function Home() {
   useDocumentTitle(null)
   const { user, loading } = useAuth()
-  const { canInstall, install } = useInstallApp()
 
   return (
     <div className="space-y-10">
@@ -65,12 +64,7 @@ export default function Home() {
                   </Link>
                 </>
               )}
-              {/* Only where the browser offers installing (Chrome, Edge) and it isn't installed. */}
-              {canInstall && (
-                <button type="button" onClick={install} className={secondaryButtonClass}>
-                  <span aria-hidden>📲</span> Install app
-                </button>
-              )}
+              <InstallAppButton />
             </div>
           )}
         </section>
