@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useDreamPosts } from '../context/useDreamPosts'
+import { appendDictation } from '../lib/dictation'
 import { clearDraft, draftIsOutdated, loadDraft, saveDraft } from '../lib/drafts'
 import { todayLocal } from '../lib/dates'
 import { symbolsByFrequency } from '../lib/symbols'
@@ -12,6 +13,7 @@ import {
   type DreamMood,
 } from '../types/dream'
 import { fieldClass, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from '../styles/ui'
+import DictationButton from './DictationButton'
 import { FormError } from './TextField'
 
 // How many of the user's most used signs to offer as one-tap chips.
@@ -244,6 +246,11 @@ export default function DreamForm({
           className={inputClass}
           placeholder="Describe your dream..."
         />
+        <div className="mt-2">
+          <DictationButton
+            onText={(spoken) => setBody((prev) => appendDictation(prev, spoken, MAX_BODY_LENGTH))}
+          />
+        </div>
       </div>
 
       <div>
