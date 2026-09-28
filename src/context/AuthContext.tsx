@@ -20,14 +20,26 @@ async function ensureProfile(user: User) {
 }
 
 async function fetchProfile(userId: string): Promise<{ profile: Profile | null; error: string | null }> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('display_name, created_at')
-    .eq('user_id', userId)
-    .maybeSingle()
+  const [profileResult, adminResult, suspensionResult] = await Promise.all([
+    supabase.from('profiles').select('display_name, created_at').eq('user_id', userId).maybeSingle(),
+    supabase.rpc('is_admin'),
+    supabase.from('user_suspensions').select('reason, created_at').eq('user_id', userId).maybeSingle(),
+  ])
+  const { data, error } = profileResult
   if (error) return { profile: null, error: friendlyError(error.message) }
   if (!data) return { profile: null, error: 'Your profile could not be found.' }
-  return { profile: { displayName: data.display_name, createdAt: data.created_at }, error: null }
+  // Moderation info is extra: if it can't be read (e.g. the database predates it), carry on as
+  // an ordinary, unsuspended user rather than failing to sign in.
+  const suspension = suspensionResult.data as { reason: string; created_at: string } | null
+  return {
+    profile: {
+      displayName: data.display_name,
+      createdAt: data.created_at,
+      isAdmin: adminResult.data === true,
+      suspension: suspension ? { reason: suspension.reason, since: suspension.created_at } : null,
+    },
+    error: null,
+  }
 }
 
 /** Where auth emails (reset, email change) send the user back to, under the GitHub Pages subpath. */
@@ -185,7 +197,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error: friendlyError(error.message) }
     if (!data) return { error: 'Your profile could not be found. Try logging out and back in.' }
 
-    setProfile({ displayName: data.display_name, createdAt: data.created_at })
+    setProfile((prev) =>
+      prev ? { ...prev, displayName: data.display_name, createdAt: data.created_at } : prev,
+    )
     return { error: null }
   }, [])
 

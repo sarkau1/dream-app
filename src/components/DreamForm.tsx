@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useAuth } from '../context/useAuth'
 import { useDreamPosts } from '../context/useDreamPosts'
 import { appendDictation } from '../lib/dictation'
 import { clearDraft, draftIsOutdated, loadDraft, saveDraft } from '../lib/drafts'
@@ -14,6 +15,7 @@ import {
 } from '../types/dream'
 import { fieldClass, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from '../styles/ui'
 import DictationButton from './DictationButton'
+import SuspendedNotice from './SuspendedNotice'
 import { FormError } from './TextField'
 
 // How many of the user's most used signs to offer as one-tap chips.
@@ -95,6 +97,7 @@ export default function DreamForm({
   // The user's past dream signs, most used first, minus the ones already on this dream. Reusing
   // the same words keeps the stats and the Dream Web from splitting one sign into several.
   const { myDreams } = useDreamPosts()
+  const suspension = useAuth().profile?.suspension ?? null
   const knownSymbols = useMemo(() => symbolsByFrequency(myDreams), [myDreams])
   const suggestions = useMemo(() => {
     const taken = new Set(symbols.map((s) => s.toLowerCase()))
@@ -157,7 +160,12 @@ export default function DreamForm({
 
     setSubmitting(true)
     setError(null)
-    const submitted = { ...values, title: title.trim(), body: body.trim() }
+    const submitted = {
+      ...values,
+      title: title.trim(),
+      body: body.trim(),
+      isPrivate: isPrivate || suspension !== null,
+    }
     const { error } = await onSubmit(submitted)
     setSubmitting(false)
 
@@ -352,13 +360,16 @@ export default function DreamForm({
         )}
       </div>
 
+      {/* A suspended user can't share; whatever they save stays private (the database agrees). */}
+      {suspension && <SuspendedNotice reason={suspension.reason} />}
       {/* The whole row is the switch, so it's one big tap target on phones. */}
       <button
         type="button"
         role="switch"
         aria-checked={!isPrivate}
         onClick={() => setIsPrivate(!isPrivate)}
-        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-midnight-700 bg-midnight-900/40 px-3.5 py-2.5 text-left text-sm transition-colors hover:border-midnight-600"
+        disabled={suspension !== null}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-midnight-700 bg-midnight-900/40 px-3.5 py-2.5 text-left text-sm transition-colors hover:border-midnight-600 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span>
           <span className="block text-moon-100">Share in the Dream Feed</span>

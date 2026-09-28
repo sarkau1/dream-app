@@ -4,12 +4,15 @@ import Avatar from '../../components/Avatar'
 import DreamCard from '../../components/DreamCard'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
 import FeedFilters from '../../components/FeedFilters'
+import ReportButton from '../../components/ReportButton'
 import { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
 import { fetchDreamer, type Dreamer } from '../../lib/dreamers'
 import { fetchSharedPage, isFiltered } from '../../lib/dreamRows'
 import { friendlyError } from '../../lib/errors'
+import { fetchSuspension, resetDisplayName, suspendUser, unsuspendUser } from '../../lib/moderation'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import { useSubmit } from '../../lib/useSubmit'
 import { cardClass } from '../../styles/ui'
 import { ALL_DREAMS_FILTER, type DreamPost, type FeedFilter } from '../../types/dream'
 
@@ -27,9 +30,87 @@ function formatMonth(iso: string) {
 }
 
 /** Everything a dreamer has shared, with a few numbers about it. */
+/** Suspend, unsuspend or reset the name of another dreamer; admins only (the database checks). */
+function AdminDreamerControls({
+  userId,
+  name,
+  onChanged,
+}: {
+  userId: string
+  name: string
+  onChanged: () => void
+}) {
+  const [suspension, setSuspension] = useState<{ reason: string } | null | undefined>(undefined)
+  const { pending, error, run } = useSubmit()
+
+  useEffect(() => {
+    let cancelled = false
+    fetchSuspension(userId).then((result) => {
+      if (!cancelled) setSuspension(result.suspension)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  async function toggleSuspension() {
+    if (suspension) {
+      if (await run(() => unsuspendUser(userId))) setSuspension(null)
+      return
+    }
+    const reason = window.prompt(
+      `Why suspend ${name}? They'll see this. They keep their private journal but can't share, comment or react.`,
+      'Broke the community rules',
+    )
+    if (reason === null) return
+    if (await run(() => suspendUser(userId, reason))) setSuspension({ reason })
+  }
+
+  async function handleResetName() {
+    if (!window.confirm(`Reset ${name}'s display name to "Dreamer"?`)) return
+    if (await run(() => resetDisplayName(userId))) onChanged()
+  }
+
+  return (
+    <section className="space-y-3 rounded-xl border border-nebula-400/30 bg-nebula-500/5 p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs font-medium uppercase tracking-wide text-nebula-300">Admin</span>
+        {suspension === undefined ? (
+          <span className="text-xs text-moon-500">Loading...</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={toggleSuspension}
+              disabled={pending}
+              className="rounded-full border border-rose-500/40 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/10 disabled:opacity-50"
+            >
+              {suspension ? 'Lift suspension' : 'Suspend'}
+            </button>
+            <button
+              type="button"
+              onClick={handleResetName}
+              disabled={pending}
+              className="rounded-full border border-midnight-700 px-3 py-1 text-xs text-moon-300 hover:text-moon-100 disabled:opacity-50"
+            >
+              Reset display name
+            </button>
+          </>
+        )}
+      </div>
+      {suspension && (
+        <p className="text-sm text-rose-200">Suspended. Reason: {suspension.reason}</p>
+      )}
+      <FormError message={error} />
+    </section>
+  )
+}
+
 export default function DreamerPage() {
   const { userId = '' } = useParams<{ userId: string }>()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  // Bumped after an admin action, to reload the name.
+  const [version, setVersion] = useState(0)
   // Tagged with the id it was loaded for, so moving to another dreamer's page shows loading
   // instead of the previous dreamer.
   const [loaded, setLoaded] = useState<{ userId: string; dreamer: Dreamer | null } | null>(null)
@@ -56,7 +137,7 @@ export default function DreamerPage() {
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [userId, version])
 
   useEffect(() => {
     let cancelled = false
@@ -156,7 +237,16 @@ export default function DreamerPage() {
             .
           </p>
         )}
+        {!isMe && <ReportButton kind="user" target={dreamer.userId} />}
       </section>
+
+      {profile?.isAdmin && !isMe && (
+        <AdminDreamerControls
+          userId={dreamer.userId}
+          name={dreamer.displayName}
+          onChanged={() => setVersion((v) => v + 1)}
+        />
+      )}
 
       <FeedFilters filter={filter} onChange={setFilter} />
       <FormError message={error} />

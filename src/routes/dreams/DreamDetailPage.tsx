@@ -12,11 +12,47 @@ import type { DreamPost } from '../../types/dream'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
 import { FormError } from '../../components/TextField'
+import ReportButton from '../../components/ReportButton'
+import { hideDream, unhideDream } from '../../lib/moderation'
+import { useSubmit } from '../../lib/useSubmit'
+
+/** Hide or unhide someone else's shared dream; admins only (the database checks too). */
+function AdminDreamControls({ dream, onChanged }: { dream: DreamPost; onChanged: () => void }) {
+  const { pending, error, run } = useSubmit()
+
+  async function toggle() {
+    if (dream.hiddenAt) {
+      if (await run(() => unhideDream(dream.id))) onChanged()
+      return
+    }
+    const reason = window.prompt('Why hide this dream? The dreamer will see this.', 'Breaks the community rules')
+    if (reason === null) return
+    if (await run(() => hideDream(dream.id, reason))) onChanged()
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-nebula-400/30 bg-nebula-500/5 px-4 py-3">
+      <span className="text-xs font-medium uppercase tracking-wide text-nebula-300">Admin</span>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={pending}
+        className="rounded-full border border-midnight-700 px-3 py-1 text-xs text-moon-300 hover:text-moon-100 disabled:opacity-50"
+      >
+        {pending ? '...' : dream.hiddenAt ? 'Show in feed again' : 'Hide from feed'}
+      </button>
+      <Link to={`/dreamers/${dream.userId}`} className="text-xs text-nebula-300 hover:text-nebula-200">
+        Manage {dream.authorName}
+      </Link>
+      <FormError message={error} />
+    </div>
+  )
+}
 
 export default function DreamDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { user, loading: authLoading } = useAuth()
-  const { getDream, updateDream, deleteDream } = useDreamPosts()
+  const { user, profile, loading: authLoading } = useAuth()
+  const { getDream, updateDream, deleteDream, refresh } = useDreamPosts()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -89,6 +125,12 @@ export default function DreamDetailPage() {
   }
 
   const isOwner = user?.id === dream.userId
+  const isAdmin = profile?.isAdmin === true
+  const reload = () => {
+    getDream(dream.id).then(({ dream }) => setDream(dream))
+    // Hiding or unhiding changes what the feed shows.
+    void refresh()
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -159,7 +201,27 @@ export default function DreamDetailPage() {
           <div className="mt-3">
             <FormError message={error} />
           </div>
+
+          {!isOwner && !dream.isPrivate && (
+            <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-midnight-700/60 pt-3">
+              <ReportButton kind="dream" target={dream.id} />
+            </div>
+          )}
         </div>
+      )}
+
+      {dream.hiddenAt && (isOwner || isAdmin) && (
+        <div role="note" className="rounded-xl border border-rose-400/30 bg-rose-500/5 px-4 py-3 text-sm text-rose-200">
+          <p className="font-medium">Hidden from the Dream Feed by a moderator.</p>
+          {dream.hiddenReason && <p className="mt-0.5 text-rose-200/80">Reason: {dream.hiddenReason}</p>}
+          {isOwner && (
+            <p className="mt-0.5 text-rose-200/80">It’s still in your journal; only you can see it.</p>
+          )}
+        </div>
+      )}
+
+      {isAdmin && !isOwner && !dream.isPrivate && (
+        <AdminDreamControls dream={dream} onChanged={reload} />
       )}
 
       {!editing && isOwner && <DreamNote dreamId={dream.id} userId={user.id} />}

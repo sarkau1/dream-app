@@ -6,6 +6,10 @@ import type { User } from '@supabase/auth-js'
 export interface Profile {
   displayName: string
   createdAt: string
+  /** Can moderate the community side (see admins in schema.sql). */
+  isAdmin: boolean
+  /** Set while a moderator has suspended the user from sharing, commenting and reacting. */
+  suspension: { reason: string; since: string } | null
 }
 
 export interface AuthContextValue {

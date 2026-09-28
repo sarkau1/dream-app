@@ -39,16 +39,21 @@ function mostCommon(values: string[]): string | null {
 }
 
 // Read-only here; whether a dream is shared is changed when editing it.
-function PrivacyBadge({ isPrivate }: { isPrivate: boolean }) {
+function PrivacyBadge({ dream }: { dream: DreamSummary }) {
+  // A shared dream a moderator hid, or shared while you're suspended, isn't in the feed.
+  const offFeed = !dream.isPrivate && (dream.hiddenAt || dream.authorSuspended)
+  const [label, colors, title] = dream.isPrivate
+    ? ['Private', 'border-amber-400/40 bg-amber-400/10 text-amber-200', undefined]
+    : offFeed
+      ? [
+          'Hidden',
+          'border-rose-400/40 bg-rose-500/10 text-rose-200',
+          dream.hiddenAt ? 'Hidden from the feed by a moderator' : 'Not in the feed while you’re suspended',
+        ]
+      : ['In feed', 'border-nebula-400/40 bg-nebula-500/10 text-nebula-200', undefined]
   return (
-    <span
-      className={`rounded-full border px-2.5 py-0.5 text-xs ${
-        isPrivate
-          ? 'border-amber-400/40 bg-amber-400/10 text-amber-200'
-          : 'border-nebula-400/40 bg-nebula-500/10 text-nebula-200'
-      }`}
-    >
-      {isPrivate ? 'Private' : 'In feed'}
+    <span title={title} className={`rounded-full border px-2.5 py-0.5 text-xs ${colors}`}>
+      {label}
     </span>
   )
 }
@@ -221,7 +226,7 @@ export default function DreamJournalPage() {
                   key={dream.id}
                   dream={dream}
                   showAuthor={false}
-                  action={<PrivacyBadge isPrivate={dream.isPrivate} />}
+                  action={<PrivacyBadge dream={dream} />}
                 />
               ))}
             </ul>

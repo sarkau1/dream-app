@@ -22,6 +22,7 @@ const ResetPasswordPage = lazy(() => import('./routes/auth/ResetPasswordPage'))
 const NewDreamPage = lazy(() => import('./routes/dreams/NewDreamPage'))
 const DreamDetailPage = lazy(() => import('./routes/dreams/DreamDetailPage'))
 const DreamerPage = lazy(() => import('./routes/dreamers/DreamerPage'))
+const AdminPage = lazy(() => import('./routes/admin/AdminPage'))
 
 function App() {
   return (
@@ -70,6 +71,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ProgressPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminPage />
                   </ProtectedRoute>
                 }
               />

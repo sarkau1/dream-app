@@ -46,6 +46,26 @@ app**, and the home page shows an Install button. It then opens full screen from
 The service worker is only registered in production builds, so try installing on the deployed
 site or with `npm run build && npm run preview`.
 
+## Admins and moderation
+
+Admins can hide shared dreams from the feed, delete any comment, reset offensive display names,
+suspend users (they keep their private journal but can't share, comment or react) and work
+through reports at `/admin`, which also shows site-wide counts. Nobody, admins included, can read
+another user's private dreams or notes through the app.
+
+Anyone signed in can report a shared dream, a comment or a dreamer. Reports are only visible to
+admins.
+
+There's no way to become an admin from the app. Add yourself once in the Supabase SQL editor,
+using the email you log in with:
+
+```sql
+insert into public.admins (user_id)
+select id from auth.users where email = 'you@example.com';
+```
+
+Then log out and back in (or reload) to see the Admin link.
+
 ## Checking the access rules
 
 The Row Level Security policies in `supabase/schema.sql` can't be unit tested without a
@@ -59,6 +79,10 @@ database, so after changing them, check by hand with two accounts, A and B:
   people's comments on someone else's dream.
 - A's dreamer page, seen by A, shows the same counts B sees, which only include shared dreams.
 - The home page leaderboard shows B only names and dream counts for others, never titles or text.
+- B can't read reports, can't make themselves an admin, and can't unhide a dream a moderator hid.
+- An admin can't read B's private dreams or notes, but can hide B's shared dreams, delete B's
+  comments and suspend B. Suspended, B can still write private dreams but can't share, comment
+  or react, and B's shared dreams leave the feed until the suspension is lifted.
 
 ## Scripts
 

@@ -14,6 +14,9 @@ const links = [
   { to: '/web', label: 'Dream Web' },
 ]
 
+// Only admins see it; the page and the database check too.
+const ADMIN_LINK = { to: '/admin', label: 'Admin', end: false }
+
 const linkColors = (isActive: boolean) =>
   isActive ? 'bg-nebula-500/20 text-nebula-300' : 'text-moon-300 hover:text-moon-100'
 
@@ -52,6 +55,8 @@ export default function NavBar() {
       <span className="sr-only">Dream Essence</span>
     </span>
   )
+
+  const visibleLinks = profile?.isAdmin ? [...links, ADMIN_LINK] : links
 
   const auth = user ? (
     <>
@@ -109,7 +114,7 @@ export default function NavBar() {
           {/* Desktop: everything in one row. */}
           <div className="hidden items-center gap-3 md:flex">
             <ul className="flex items-center gap-1">
-              {links.map((link) => (
+              {visibleLinks.map((link) => (
                 <li key={link.to}>
                   <NavLink to={link.to} end={link.end} className={linkClass}>
                     {link.label}
@@ -139,7 +144,7 @@ export default function NavBar() {
         {menuOpen && (
           <div id="mobile-menu" className="mt-3 space-y-4 pb-2 md:hidden">
             <ul className="space-y-1">
-              {links.map((link) => (
+              {visibleLinks.map((link) => (
                 <li key={link.to}>
                   <NavLink to={link.to} end={link.end} onClick={closeMenu} className={mobileLinkClass}>
                     {link.label}

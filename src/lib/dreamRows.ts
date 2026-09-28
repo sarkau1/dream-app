@@ -14,7 +14,8 @@ import {
 // display name, a text preview and comment/reaction counts, so a page of dreams is one request.
 // Writes go to `dreams`.
 export const DREAMS_VIEW = 'dreams_with_authors'
-const BASE_COLUMNS = 'id, user_id, title, mood, symbols, is_private, dreamt_on, created_at, author_name'
+const BASE_COLUMNS =
+  'id, user_id, title, mood, symbols, is_private, dreamt_on, created_at, author_name, hidden_at, hidden_reason, author_suspended'
 export const FULL_COLUMNS = `${BASE_COLUMNS}, body`
 const SHARED_COLUMNS = `${FULL_COLUMNS}, comment_count, reaction_count, reacted_by_me`
 export const SUMMARY_COLUMNS = `${BASE_COLUMNS}, preview`
@@ -31,6 +32,10 @@ interface BaseRow {
   is_private: boolean
   dreamt_on: string
   created_at: string
+  // Only from the view, not from writes to `dreams`.
+  hidden_at?: string | null
+  hidden_reason?: string | null
+  author_suspended?: boolean
 }
 
 type PostRow = BaseRow & {
@@ -63,6 +68,9 @@ function fromBase(row: BaseRow, authorName: string) {
     isPrivate: row.is_private,
     dreamtOn: row.dreamt_on,
     createdAt: row.created_at,
+    hiddenAt: row.hidden_at ?? null,
+    hiddenReason: row.hidden_reason ?? null,
+    authorSuspended: row.author_suspended ?? false,
   }
 }
 
@@ -139,7 +147,14 @@ export async function fetchSharedPage(
   filter: FeedFilter,
   { before, userId }: { before?: string; userId?: string } = {},
 ) {
-  let query = supabase.from(DREAMS_VIEW).select(SHARED_COLUMNS).eq('is_private', false)
+  let query = supabase
+    .from(DREAMS_VIEW)
+    .select(SHARED_COLUMNS)
+    .eq('is_private', false)
+    // The database already keeps these from everyone but admins (and the dreamer); filtering
+    // here keeps them out of an admin's feed too. Admins find them on the admin page.
+    .is('hidden_at', null)
+    .eq('author_suspended', false)
   if (userId) query = query.eq('user_id', userId)
   if (filter.mood) query = query.eq('mood', filter.mood)
   const start = periodStart(filter.period, todayLocal())

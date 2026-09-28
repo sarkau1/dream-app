@@ -23,6 +23,11 @@ export interface DreamPost extends DreamInput {
   userId: string
   authorName: string
   createdAt: string
+  /** Set when a moderator took this shared dream out of the feed. */
+  hiddenAt?: string | null
+  hiddenReason?: string | null
+  /** True for your own dreams while you're suspended, or, for admins, a suspended user's. */
+  authorSuspended?: boolean
   /** Only loaded for lists of shared dreams (the Dream Feed and dreamer pages). */
   commentCount?: number
   reactionCount?: number

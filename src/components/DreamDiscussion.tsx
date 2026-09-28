@@ -9,10 +9,13 @@ import {
   setReaction,
   type DreamComment,
 } from '../lib/dreamSocial'
+import { useAuth } from '../context/useAuth'
 import { useDreamPosts } from '../context/useDreamPosts'
 import { useSubmit } from '../lib/useSubmit'
 import { inputClass, primaryButtonClass } from '../styles/ui'
 import Avatar from './Avatar'
+import ReportButton from './ReportButton'
+import SuspendedNotice from './SuspendedNotice'
 import { FormError } from './TextField'
 
 function formatCommentDate(iso: string) {
@@ -38,6 +41,9 @@ export default function DreamDiscussion({
   const submit = useSubmit()
   const remove = useSubmit()
   const { updateFeedCounts } = useDreamPosts()
+  const { profile } = useAuth()
+  const isAdmin = profile?.isAdmin === true
+  const suspension = profile?.suspension ?? null
   const commentCount = comments?.length
 
   // Keep the feed card in step, so going back shows the new counts without a reload.
@@ -109,7 +115,7 @@ export default function DreamDiscussion({
         <button
           type="button"
           onClick={toggleReaction}
-          disabled={reacting}
+          disabled={reacting || suspension !== null}
           aria-pressed={reactions.mine}
           title={reactions.mine ? 'Remove your reaction' : 'Let the dreamer know this resonates'}
           className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${
@@ -149,7 +155,7 @@ export default function DreamDiscussion({
                     <span className="text-xs text-nebula-300">dreamer</span>
                   )}
                   <span className="text-xs text-moon-500">{formatCommentDate(comment.createdAt)}</span>
-                  {(comment.userId === userId || dreamerId === userId) && (
+                  {(comment.userId === userId || dreamerId === userId || isAdmin) && (
                     <button
                       type="button"
                       onClick={() => handleDelete(comment.id)}
@@ -162,12 +168,18 @@ export default function DreamDiscussion({
                 <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-moon-300">
                   {comment.body}
                 </p>
+                {comment.userId !== userId && (
+                  <ReportButton kind="comment" target={comment.id} className="mt-1" />
+                )}
               </div>
             </li>
           ))}
         </ul>
       )}
 
+      {suspension ? (
+        <SuspendedNotice reason={suspension.reason} />
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-2">
         <label htmlFor="dream-comment" className="sr-only">
           Add a comment
@@ -193,6 +205,7 @@ export default function DreamDiscussion({
           {submit.pending ? 'Posting...' : 'Comment'}
         </button>
       </form>
+      )}
     </section>
   )
 }

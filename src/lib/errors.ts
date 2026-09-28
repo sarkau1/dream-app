@@ -15,6 +15,12 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   profiles_display_name_length: `Display names can be up to ${MAX_DISPLAY_NAME_LENGTH} characters.`,
   dream_notes_body_length: 'Notes can be up to 20,000 characters.',
   dream_comments_body_length: 'Comments can be up to 1,000 characters.',
+  // Raised by report_content() and the admin_*() functions.
+  report_own: 'You can’t report your own dreams or comments.',
+  report_target_missing: 'That can’t be reported any more. It may have been deleted or made private.',
+  not_admin: 'Only admins can do that.',
+  cannot_suspend_admin: 'Admins can’t be suspended.',
+  user_suspensions_reason_length: 'Keep the reason to 500 characters or fewer.',
 }
 
 const OUTDATED_SCHEMA =
