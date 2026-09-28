@@ -236,7 +236,10 @@ create policy "Commenters and dreamers can delete comments"
 grant select, insert, delete on public.dream_reactions to authenticated;
 grant select, insert, delete on public.dream_comments to authenticated;
 
-create or replace view public.dream_comments_with_authors
+-- Views are dropped and re-created rather than replaced in place, so this file can also take
+-- columns away (create or replace view can only add them at the end).
+drop view if exists public.dream_comments_with_authors;
+create view public.dream_comments_with_authors
   with (security_invoker = true)
 as
 select
@@ -256,7 +259,8 @@ grant select on public.dream_comments_with_authors to authenticated;
 -- list every dream without downloading every full body. Defined after the comment and reaction
 -- tables it counts. security_invoker makes the view run as the signed-in user, so
 -- the dreams and profiles policies above still decide which rows come back.
-create or replace view public.dreams_with_authors
+drop view if exists public.dreams_with_authors;
+create view public.dreams_with_authors
   with (security_invoker = true)
 as
 select
@@ -271,7 +275,6 @@ select
   d.dreamt_on,
   d.created_at,
   coalesce(p.display_name, 'Dreamer') as author_name,
-  -- Appended last: create or replace view can only add columns at the end.
   (select count(*) from public.dream_comments c where c.dream_id = d.id) as comment_count,
   (select count(*) from public.dream_reactions r where r.dream_id = d.id) as reaction_count,
   exists (
@@ -286,7 +289,9 @@ grant select on public.dreams_with_authors to authenticated;
 -- ones included. security definer because the dreams policies hide other people's private
 -- dreams; it returns only names and counts, never dream content. Gives the top 10 plus the
 -- caller's own row, so they can see where they stand even outside the top 10.
-create or replace function public.dream_leaderboard()
+-- Dropped first: create or replace can't change the columns a function returns.
+drop function if exists public.dream_leaderboard();
+create function public.dream_leaderboard()
 returns table (user_id uuid, display_name text, dream_count bigint, rank bigint)
 language sql
 stable
@@ -331,3 +336,13 @@ $$;
 
 revoke execute on function public.delete_own_account() from public, anon;
 grant execute on function public.delete_own_account() to authenticated;
+
+-- Removes the Essence Shop that an earlier version of this file created (frames and titles
+-- bought with Dream Essence). Does nothing on a database that never had it. Runs after the
+-- views above are re-created without the shop columns, so nothing depends on them any more.
+drop function if exists public.buy_essence_item(text);
+drop function if exists public.equip_essence_item(text, text);
+alter table public.profiles drop column if exists avatar_frame;
+alter table public.profiles drop column if exists title;
+drop table if exists public.essence_purchases;
+drop table if exists public.shop_items;
