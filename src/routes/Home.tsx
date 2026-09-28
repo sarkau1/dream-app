@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
-import { primaryButtonClass, secondaryButtonClass } from '../styles/ui'
+import Leaderboard from '../components/Leaderboard'
+import { cardClass, primaryButtonClass, secondaryButtonClass } from '../styles/ui'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 const sections = [
@@ -27,42 +28,53 @@ export default function Home() {
 
   return (
     <div className="space-y-10">
-      <section className="max-w-2xl space-y-4">
-        <h1 className="text-4xl font-semibold text-moon-100 sm:text-5xl">
-          Learn to notice you&apos;re dreaming.
-        </h1>
-        <p className="text-lg text-moon-300">
-          Journal your dreams, spot the signs that repeat, and share the ones you want with the
-          community. Log a lucid dream to earn <span className="text-aurora-300">✦ Dream Essence</span>.
-        </p>
-        {!loading && (
-          <div className="flex flex-wrap gap-3 pt-2">
-            {user ? (
-              <Link
-                to="/dreams/new?from=journal"
-                className={primaryButtonClass}
-              >
-                Write last night&apos;s dream
-              </Link>
-            ) : (
-              <>
+      {/* Signed in, the scoreboard sits beside the intro on wide screens and below it on phones. */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="max-w-2xl space-y-4">
+          <h1 className="text-4xl font-semibold text-moon-100 sm:text-5xl">
+            Learn to notice you&apos;re dreaming.
+          </h1>
+          <p className="text-lg text-moon-300">
+            Journal your dreams, spot the signs that repeat, and share the ones you want with the
+            community. Log a lucid dream to earn <span className="text-aurora-300">✦ Dream Essence</span>.
+          </p>
+          {!loading && (
+            <div className="flex flex-wrap gap-3 pt-2">
+              {user ? (
                 <Link
-                  to="/register"
+                  to="/dreams/new?from=journal"
                   className={primaryButtonClass}
                 >
-                  Start your journal
+                  Write last night&apos;s dream
                 </Link>
-                <Link
-                  to="/login"
-                  className={secondaryButtonClass}
-                >
-                  Log in
-                </Link>
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <Link
+                    to="/register"
+                    className={primaryButtonClass}
+                  >
+                    Start your journal
+                  </Link>
+                  <Link
+                    to="/login"
+                    className={secondaryButtonClass}
+                  >
+                    Log in
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* The counts come from a function only signed-in users may call. */}
+        {user && (
+          <section className={`space-y-3 p-5 ${cardClass}`}>
+            <h2 className="text-lg font-medium text-moon-100">Top dreamers</h2>
+            <Leaderboard userId={user.id} />
+          </section>
         )}
-      </section>
+      </div>
 
       <section className="grid gap-4 sm:grid-cols-3">
         {sections.map((section) => (

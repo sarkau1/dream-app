@@ -282,7 +282,7 @@ left join public.profiles p on p.user_id = d.user_id;
 
 grant select on public.dreams_with_authors to authenticated;
 
--- The Progress page leaderboard: dreamers ranked by how many dreams they've logged, private
+-- The home page leaderboard: dreamers ranked by how many dreams they've logged, private
 -- ones included. security definer because the dreams policies hide other people's private
 -- dreams; it returns only names and counts, never dream content. Gives the top 10 plus the
 -- caller's own row, so they can see where they stand even outside the top 10.

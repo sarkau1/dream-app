@@ -1,9 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
-import Leaderboard from '../../components/Leaderboard'
 import { FormError } from '../../components/TextField'
-import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { formatDreamDate, todayLocal } from '../../lib/dates'
 import { CALENDAR_WEEKS, progressFromDreams, type CalendarDay, type Milestone } from '../../lib/progress'
@@ -173,7 +171,6 @@ function streakHint(current: number, loggedToday: boolean) {
 export default function ProgressPage() {
   useDocumentTitle('Progress')
   const { myDreams, loadingMyDreams, myDreamsError } = useDreamPosts()
-  const { user } = useAuth()
   const progress = useMemo(() => progressFromDreams(myDreams, todayLocal()), [myDreams])
 
   let content
@@ -228,9 +225,7 @@ export default function ProgressPage() {
           </ul>
         </Section>
 
-        {/* The leaderboard comes last so it sits bottom right: third column on wide screens,
-            under the other two on tablets and phones. */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           <Section title="Moods">
             <BarList rows={moods} />
           </Section>
@@ -250,13 +245,6 @@ export default function ProgressPage() {
               </p>
             )}
           </Section>
-          {user && (
-            <div className="md:col-span-2 lg:col-span-1">
-              <Section title="Top dreamers">
-                <Leaderboard userId={user.id} />
-              </Section>
-            </div>
-          )}
         </div>
       </div>
     )
@@ -268,7 +256,7 @@ export default function ProgressPage() {
         <div>
           <h1 className="text-3xl font-semibold text-moon-100">Progress</h1>
           <p className="mt-1 text-sm text-moon-400">
-            How your dream recall is going, and how you compare with other dreamers.
+            How your dream recall is going. Everything here comes from your own journal.
           </p>
         </div>
         {myDreams.length > 0 && (
