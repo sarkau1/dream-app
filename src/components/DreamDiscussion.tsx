@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import {
   addComment,
   deleteComment,
@@ -8,6 +9,7 @@ import {
   setReaction,
   type DreamComment,
 } from '../lib/dreamSocial'
+import { useDreamPosts } from '../context/useDreamPosts'
 import { useSubmit } from '../lib/useSubmit'
 import { inputClass, primaryButtonClass } from '../styles/ui'
 import Avatar from './Avatar'
@@ -35,6 +37,18 @@ export default function DreamDiscussion({
   const [body, setBody] = useState('')
   const submit = useSubmit()
   const remove = useSubmit()
+  const { updateFeedCounts } = useDreamPosts()
+  const commentCount = comments?.length
+
+  // Keep the feed card in step, so going back shows the new counts without a reload.
+  useEffect(() => {
+    if (commentCount === undefined) return
+    updateFeedCounts(dreamId, {
+      commentCount,
+      reactionCount: reactions.count,
+      reactedByMe: reactions.mine,
+    })
+  }, [dreamId, commentCount, reactions, updateFeedCounts])
 
   const loadComments = useCallback(async () => {
     const { comments, error } = await fetchComments(dreamId)
@@ -120,10 +134,17 @@ export default function DreamDiscussion({
         <ul className="space-y-4">
           {comments.map((comment) => (
             <li key={comment.id} className="flex gap-3">
-              <Avatar userId={comment.userId} name={comment.authorName} />
+              <Link to={`/dreamers/${comment.userId}`} tabIndex={-1} aria-hidden>
+                <Avatar userId={comment.userId} name={comment.authorName} />
+              </Link>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                  <span className="font-medium text-moon-100">{comment.authorName}</span>
+                  <Link
+                    to={`/dreamers/${comment.userId}`}
+                    className="font-medium text-moon-100 hover:text-nebula-300"
+                  >
+                    {comment.authorName}
+                  </Link>
                   {comment.userId === dreamerId && (
                     <span className="text-xs text-nebula-300">dreamer</span>
                   )}

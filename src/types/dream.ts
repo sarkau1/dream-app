@@ -23,9 +23,15 @@ export interface DreamPost extends DreamInput {
   userId: string
   authorName: string
   createdAt: string
-  /** Only loaded for the Dream Feed. */
+  /** Only loaded for lists of shared dreams (the Dream Feed and dreamer pages). */
   commentCount?: number
   reactionCount?: number
+  reactedByMe?: boolean
+}
+
+/** A dream in the account export, with the dreamer's private note on it if they wrote one. */
+export interface ExportedDream extends DreamPost {
+  note?: string
 }
 
 export type FeedPeriod = 'all' | 'week' | 'month' | 'year'

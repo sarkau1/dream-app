@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { DreamInput, DreamPost, DreamSummary, FeedFilter } from '../types/dream'
+import type { DreamInput, DreamPost, DreamSummary, ExportedDream, FeedFilter } from '../types/dream'
 
 type Result = Promise<{ error: string | null }>
 
@@ -22,7 +22,12 @@ export interface DreamPostContextValue {
   getDream: (id: string) => Promise<{ dream: DreamPost | null; error: string | null }>
   /** Ids of the user's dreams whose full text contains `query` (case-insensitive). */
   searchMyDreamBodies: (query: string) => Promise<{ ids: string[]; error: string | null }>
-  exportMyDreams: () => Promise<{ dreams: DreamPost[]; error: string | null }>
+  exportMyDreams: () => Promise<{ dreams: ExportedDream[]; error: string | null }>
+  /** Updates one feed dream's comment/reaction counts after they change on its page. */
+  updateFeedCounts: (
+    id: string,
+    counts: Pick<DreamPost, 'commentCount' | 'reactionCount' | 'reactedByMe'>,
+  ) => void
   /** All of the signed-in user's dreams, without full text (see DreamSummary). */
   myDreams: DreamSummary[]
   loadingMyDreams: boolean

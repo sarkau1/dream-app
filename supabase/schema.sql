@@ -273,7 +273,10 @@ select
   coalesce(p.display_name, 'Dreamer') as author_name,
   -- Appended last: create or replace view can only add columns at the end.
   (select count(*) from public.dream_comments c where c.dream_id = d.id) as comment_count,
-  (select count(*) from public.dream_reactions r where r.dream_id = d.id) as reaction_count
+  (select count(*) from public.dream_reactions r where r.dream_id = d.id) as reaction_count,
+  exists (
+    select 1 from public.dream_reactions r where r.dream_id = d.id and r.user_id = auth.uid()
+  ) as reacted_by_me
 from public.dreams d
 left join public.profiles p on p.user_id = d.user_id;
 

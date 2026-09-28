@@ -24,6 +24,12 @@ describe('dreamsToMarkdown', () => {
     expect(markdown).toContain('I could breathe under it.')
   })
 
+  it('adds the private note under its dream', () => {
+    const markdown = dreamsToMarkdown([{ ...dream, note: 'About my exams.' }], 'x')
+    expect(markdown).toContain('### My notes\n\nAbout my exams.')
+    expect(dreamsToMarkdown([dream], 'x')).not.toContain('My notes')
+  })
+
   it('leaves out mood and signs when a dream has none', () => {
     const markdown = dreamsToMarkdown([{ ...dream, mood: null, symbols: [], isPrivate: false }], 'x')
     expect(markdown).toContain('_Shared in the Dream Feed_')
@@ -42,6 +48,12 @@ describe('dreamsToJson', () => {
       mood: 'Lucid',
       symbols: ['water', 'books'],
       isPrivate: true,
+      note: null,
     })
+  })
+
+  it('includes the private note when there is one', () => {
+    const parsed = JSON.parse(dreamsToJson([{ ...dream, note: 'About my exams.' }], 'x'))
+    expect(parsed.dreams[0].note).toBe('About my exams.')
   })
 })

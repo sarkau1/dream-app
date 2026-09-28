@@ -70,7 +70,9 @@ export default function DreamCard({
             💬 {dream.commentCount} {dream.commentCount === 1 ? 'comment' : 'comments'}
           </span>
           {!!dream.reactionCount && (
-            <span className="text-aurora-300">✦ {dream.reactionCount} resonated</span>
+            <span className={dream.reactedByMe ? 'font-medium text-aurora-200' : 'text-aurora-300/80'}>
+              ✦ {dream.reactionCount} resonated{dream.reactedByMe ? ', including you' : ''}
+            </span>
           )}
         </p>
       )}

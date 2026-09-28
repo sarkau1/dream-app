@@ -30,6 +30,19 @@ derived from your saved dreams).
 `supabase/schema.sql` is safe to re-run: when you pull a change that adds a column, run the
 whole file again to migrate an existing database.
 
+## Checking the access rules
+
+The Row Level Security policies in `supabase/schema.sql` can't be unit tested without a
+database, so after changing them, check by hand with two accounts, A and B:
+
+- B can't see A's private dreams: not in the feed, not on A's dreamer page, not at `/dreams/<id>`.
+- B never sees A's notes, even on a dream A has shared.
+- B can comment on and react to A's shared dreams, but not A's private ones, including a
+  shared dream A has since made private.
+- B can delete B's own comments. A can delete any comment on A's dreams. B can't delete other
+  people's comments on someone else's dream.
+- A's dreamer page, seen by A, shows the same counts B sees, which only include shared dreams.
+
 ## Scripts
 
 - `npm run dev` - start the dev server

@@ -1,7 +1,7 @@
-import type { DreamPost } from '../types/dream'
+import type { ExportedDream } from '../types/dream'
 
 /** A readable journal: one section per dream, oldest first, in plain Markdown. */
-export function dreamsToMarkdown(dreams: DreamPost[], exportedOn: string): string {
+export function dreamsToMarkdown(dreams: ExportedDream[], exportedOn: string): string {
   const lines = [`# Dream journal`, '', `Exported ${exportedOn} · ${dreams.length} dreams`, '']
   for (const dream of dreams) {
     lines.push(`## ${dream.dreamtOn} — ${dream.title}`, '')
@@ -11,12 +11,13 @@ export function dreamsToMarkdown(dreams: DreamPost[], exportedOn: string): strin
       dream.isPrivate ? 'Private' : 'Shared in the Dream Feed',
     ].filter(Boolean)
     lines.push(`_${facts.join(' · ')}_`, '', dream.body, '')
+    if (dream.note) lines.push('### My notes', '', dream.note, '')
   }
   return lines.join('\n')
 }
 
 /** Everything, machine-readable, for moving to another app or keeping a backup. */
-export function dreamsToJson(dreams: DreamPost[], exportedOn: string): string {
+export function dreamsToJson(dreams: ExportedDream[], exportedOn: string): string {
   return JSON.stringify(
     {
       exportedOn,
@@ -29,6 +30,7 @@ export function dreamsToJson(dreams: DreamPost[], exportedOn: string): string {
         mood: dream.mood,
         symbols: dream.symbols,
         isPrivate: dream.isPrivate,
+        note: dream.note ?? null,
       })),
     },
     null,

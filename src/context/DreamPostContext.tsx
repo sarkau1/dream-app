@@ -1,125 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { addDays, todayLocal } from '../lib/dates'
 import { friendlyError } from '../lib/errors'
 import { isSupabaseConfigured, NOT_CONFIGURED_ERROR, supabase } from '../lib/supabaseClient'
 import { useAuth } from './useAuth'
 import { DreamPostContext, type DreamPostContextValue } from './useDreamPosts'
 import {
+  byCreatedAtDesc,
+  byDreamtOnDesc,
+  DREAMS_VIEW,
+  fetchSharedPage,
+  FULL_COLUMNS,
+  matchesFilter,
+  SUMMARY_COLUMNS,
+  summarize,
+  toPost,
+  toRow,
+  toSummary,
+  withKnownCounts,
+  WRITE_COLUMNS,
+} from '../lib/dreamRows'
+import {
   ALL_DREAMS_FILTER,
-  PREVIEW_LENGTH,
   type DreamInput,
-  type DreamMood,
   type DreamPost,
   type DreamSummary,
+  type ExportedDream,
   type FeedFilter,
-  type FeedPeriod,
 } from '../types/dream'
 
 const LOGGED_OUT_ERROR = 'Log in to read dreams.'
-const PAGE_SIZE = 10
-
-// Reads go through the dreams_with_authors view (supabase/schema.sql), which adds the author's
-// display name and a text preview, so a page of dreams is one request. Writes go to `dreams`.
-const DREAMS_VIEW = 'dreams_with_authors'
-const BASE_COLUMNS = 'id, user_id, title, mood, symbols, is_private, dreamt_on, created_at, author_name'
-const FULL_COLUMNS = `${BASE_COLUMNS}, body`
-const FEED_COLUMNS = `${FULL_COLUMNS}, comment_count, reaction_count`
-const SUMMARY_COLUMNS = `${BASE_COLUMNS}, preview`
-const WRITE_COLUMNS = 'id, user_id, title, body, mood, symbols, is_private, dreamt_on, created_at'
-
-interface BaseRow {
-  id: string
-  user_id: string
-  title: string
-  mood: string | null
-  symbols: string[] | null
-  is_private: boolean
-  dreamt_on: string
-  created_at: string
-}
-
-function toRow(input: DreamInput) {
-  return {
-    title: input.title,
-    body: input.body,
-    mood: input.mood,
-    symbols: input.symbols,
-    is_private: input.isPrivate,
-    dreamt_on: input.dreamtOn,
-  }
-}
-
-function fromBase(row: BaseRow, authorName: string) {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    authorName,
-    title: row.title,
-    mood: (row.mood as DreamMood | null) ?? null,
-    symbols: row.symbols ?? [],
-    isPrivate: row.is_private,
-    dreamtOn: row.dreamt_on,
-    createdAt: row.created_at,
-  }
-}
-
-type PostRow = BaseRow & {
-  body: string
-  author_name?: string
-  comment_count?: number
-  reaction_count?: number
-}
-
-function toPost(row: PostRow, authorName?: string): DreamPost {
-  const post: DreamPost = {
-    ...fromBase(row, authorName ?? row.author_name ?? 'Dreamer'),
-    body: row.body,
-  }
-  if (row.comment_count !== undefined) post.commentCount = row.comment_count
-  if (row.reaction_count !== undefined) post.reactionCount = row.reaction_count
-  return post
-}
-
-const PERIOD_DAYS: Record<Exclude<FeedPeriod, 'all'>, number> = { week: 7, month: 30, year: 365 }
-
-function matchesFilter(post: DreamPost, filter: FeedFilter) {
-  if (filter.mood && post.mood !== filter.mood) return false
-  if (filter.period === 'all') return true
-  return post.dreamtOn >= addDays(todayLocal(), -PERIOD_DAYS[filter.period])
-}
-
-function toSummary(row: BaseRow & { preview: string; author_name: string }): DreamSummary {
-  return { ...fromBase(row, row.author_name), preview: row.preview }
-}
-
-function summarize({ body, ...rest }: DreamPost): DreamSummary {
-  return { ...rest, preview: body.slice(0, PREVIEW_LENGTH) }
-}
-
-// Journal order: by the night dreamt, newest first, then by when it was written down.
-function byDreamtOnDesc(a: DreamSummary, b: DreamSummary) {
-  if (a.dreamtOn !== b.dreamtOn) return a.dreamtOn < b.dreamtOn ? 1 : -1
-  return byCreatedAtDesc(a, b)
-}
-
-// Feed order: newest post first.
-function byCreatedAtDesc(a: { createdAt: string }, b: { createdAt: string }) {
-  return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0
-}
-
-/** One page of the community feed, newest first; `before` pages past the oldest dream shown. */
-function fetchFeedPage(filter: FeedFilter, before?: string) {
-  let query = supabase.from(DREAMS_VIEW).select(FEED_COLUMNS).eq('is_private', false)
-  if (filter.mood) query = query.eq('mood', filter.mood)
-  if (filter.period !== 'all') {
-    query = query.gte('dreamt_on', addDays(todayLocal(), -PERIOD_DAYS[filter.period]))
-  }
-  // Page by "older than the last one shown" rather than by offset, so dreams posted while
-  // someone is reading don't shift the pages and show up twice.
-  if (before) query = query.lt('created_at', before)
-  return query.order('created_at', { ascending: false }).limit(PAGE_SIZE)
-}
-
 // ilike treats % and _ as wildcards; a search for "100%" should look for the literal text.
 function escapeLike(text: string) {
   return text.replace(/[\\%_]/g, (char) => `\\${char}`)
@@ -210,18 +118,17 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
 
-    const { data, error: feedError } = await fetchFeedPage(feedFilter)
+    const page = await fetchSharedPage(feedFilter)
     if (gen !== feedGenRef.current) return
 
-    if (feedError) {
-      setError(friendlyError(feedError.message))
+    if (page.error) {
+      setError(friendlyError(page.error.message))
       setLoading(false)
       return
     }
 
-    const posts = (data ?? []).map((row) => toPost(row))
-    setDreams(posts)
-    setHasMore(posts.length === PAGE_SIZE)
+    setDreams(page.dreams)
+    setHasMore(page.hasMore)
     setLoading(false)
   }, [userId, authLoading, feedFilter])
 
@@ -232,24 +139,22 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
 
     const gen = feedGenRef.current
     setLoadingMore(true)
-    const { data, error: feedError } = await fetchFeedPage(
-      feedFilterRef.current,
-      loaded[loaded.length - 1].createdAt,
-    )
+    const page = await fetchSharedPage(feedFilterRef.current, {
+      before: loaded[loaded.length - 1].createdAt,
+    })
     if (gen !== feedGenRef.current) return
 
-    if (feedError) {
-      setError(friendlyError(feedError.message))
+    if (page.error) {
+      setError(friendlyError(page.error.message))
       setLoadingMore(false)
       return
     }
 
-    const newDreams = (data ?? []).map((row) => toPost(row))
     setDreams((prev) => {
       const seen = new Set(prev.map((dream) => dream.id))
-      return [...prev, ...newDreams.filter((dream) => !seen.has(dream.id))]
+      return [...prev, ...page.dreams.filter((dream) => !seen.has(dream.id))]
     })
-    setHasMore(newDreams.length === PAGE_SIZE)
+    setHasMore(page.hasMore)
     setLoadingMore(false)
   }, [userId])
 
@@ -270,15 +175,20 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       // Only slot it in if it falls inside the loaded range; otherwise "Load more" will reach it.
       const oldestLoaded = prev[prev.length - 1]?.createdAt
       if (hasMoreRef.current && oldestLoaded && post.createdAt < oldestLoaded) return rest
-      // Writes don't return the counts; keep the ones already shown (a new dream has none).
-      const counted = {
-        ...post,
-        commentCount: previous?.commentCount ?? 0,
-        reactionCount: previous?.reactionCount ?? 0,
-      }
-      return [...rest, counted].sort(byCreatedAtDesc)
+      return [...rest, withKnownCounts(post, previous)].sort(byCreatedAtDesc)
     })
   }, [])
+
+  // The dream page reports comment and reaction changes here, so going back to the feed shows
+  // them without a reload.
+  const updateFeedCounts = useCallback(
+    (id: string, counts: Pick<DreamPost, 'commentCount' | 'reactionCount' | 'reactedByMe'>) => {
+      setDreams((prev) =>
+        prev.map((dream) => (dream.id === id ? { ...dream, ...counts } : dream)),
+      )
+    },
+    [],
+  )
 
   const createDream = useCallback(
     async (input: DreamInput) => {
@@ -377,14 +287,32 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) return { dreams: [], error: NOT_CONFIGURED_ERROR }
     if (!userId) return { dreams: [], error: LOGGED_OUT_ERROR }
 
-    const { data, error: exportError } = await supabase
-      .from(DREAMS_VIEW)
-      .select(FULL_COLUMNS)
-      .eq('user_id', userId)
-      .order('dreamt_on', { ascending: true })
-      .order('created_at', { ascending: true })
+    const [dreamsResult, notesResult] = await Promise.all([
+      supabase
+        .from(DREAMS_VIEW)
+        .select(FULL_COLUMNS)
+        .eq('user_id', userId)
+        .order('dreamt_on', { ascending: true })
+        .order('created_at', { ascending: true }),
+      // The private notes are the user's data too, so they go in the export with their dreams.
+      supabase.from('dream_notes').select('dream_id, body').eq('user_id', userId),
+    ])
+    const exportError = dreamsResult.error ?? notesResult.error
     if (exportError) return { dreams: [], error: friendlyError(exportError.message) }
-    return { dreams: (data ?? []).map((row) => toPost(row)), error: null }
+
+    const notes = new Map(
+      ((notesResult.data ?? []) as { dream_id: string; body: string }[]).map((row) => [
+        row.dream_id,
+        row.body,
+      ]),
+    )
+    const dreams = (dreamsResult.data ?? []).map((row) => {
+      const dream: ExportedDream = toPost(row)
+      const note = notes.get(dream.id)
+      if (note) dream.note = note
+      return dream
+    })
+    return { dreams, error: null }
   }, [userId])
 
   // Memoized so consumers only re-render when something they can see actually changed.
@@ -405,6 +333,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       getDream,
       searchMyDreamBodies,
       exportMyDreams,
+      updateFeedCounts,
       myDreams,
       loadingMyDreams,
       myDreamsError,
@@ -426,6 +355,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       getDream,
       searchMyDreamBodies,
       exportMyDreams,
+      updateFeedCounts,
       myDreams,
       loadingMyDreams,
       myDreamsError,
