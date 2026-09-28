@@ -30,6 +30,22 @@ derived from your saved dreams).
 `supabase/schema.sql` is safe to re-run: when you pull a change that adds a column, run the
 whole file again to migrate an existing database.
 
+## Installing as an app
+
+The site is a Progressive Web App: in Chrome or Edge (including on Android) it offers **Install
+app**, and the home page shows an Install button. It then opens full screen from its own icon.
+
+- `public/manifest.webmanifest`: name, colours, icons and home-screen shortcuts.
+- `public/sw.js`: the service worker. Pages always load from the network, so each deploy
+  reaches users on their next open; built files are cached so the app opens fast, and
+  `public/offline.html` is shown without a connection. Supabase requests are never cached.
+  Bump `VERSION` in it only when the worker's own logic changes.
+- `public/icon.svg` is the source of the icons; the PNGs were rendered from it at 512, 192 and
+  180 (Apple) pixels. Re-render them if it changes.
+
+The service worker is only registered in production builds, so try installing on the deployed
+site or with `npm run build && npm run preview`.
+
 ## Checking the access rules
 
 The Row Level Security policies in `supabase/schema.sql` can't be unit tested without a
