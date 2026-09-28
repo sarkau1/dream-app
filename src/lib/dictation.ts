@@ -74,6 +74,32 @@ export function appendDictation(body: string, spoken: string, maxLength = Infini
   return (body + separator + piece).slice(0, maxLength)
 }
 
+/**
+ * The whole transcript of one listening session, from every finished phrase recognised so far.
+ *
+ * Desktop Chrome reports each phrase once, but Chrome on Android re-sends phrases it already
+ * reported, or sends a phrase again as it grows ("i love", then "i love music"). Adding every
+ * piece would repeat words, so a piece that starts with the previous one, or with everything so
+ * far, replaces it instead of being added.
+ */
+export function mergeTranscripts(pieces: string[]): string {
+  const merged: string[] = []
+  const same = (text: string) => text.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+  for (const raw of pieces) {
+    const piece = raw.trim().replace(/\s+/g, ' ')
+    if (!piece) continue
+    const last = merged[merged.length - 1]
+    if (merged.length > 1 && same(piece).startsWith(same(merged.join(' ')))) {
+      merged.splice(0, merged.length, piece)
+    } else if (last !== undefined && same(piece).startsWith(same(last))) {
+      merged[merged.length - 1] = piece
+    } else {
+      merged.push(piece)
+    }
+  }
+  return merged.join(' ')
+}
+
 /** What went wrong, in words, for the error codes speech recognition reports. */
 export function dictationErrorMessage(code: string, languageLabel: string): string | null {
   switch (code) {

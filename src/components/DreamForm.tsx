@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useDreamPosts } from '../context/useDreamPosts'
 import { appendDictation } from '../lib/dictation'
 import { clearDraft, draftIsOutdated, loadDraft, saveDraft } from '../lib/drafts'
@@ -81,6 +81,9 @@ export default function DreamForm({
 
   const [title, setTitle] = useState(start.title)
   const [body, setBody] = useState(start.body)
+  // The text as it was when voice typing started, and whether it's listening now.
+  const dictationBaseRef = useRef('')
+  const [dictating, setDictating] = useState(false)
   const [mood, setMood] = useState<DreamMood | null>(start.mood)
   const [symbols, setSymbols] = useState<string[]>(start.symbols)
   const [symbolInput, setSymbolInput] = useState('')
@@ -242,13 +245,24 @@ export default function DreamForm({
           required
           maxLength={MAX_BODY_LENGTH}
           onChange={(e) => setBody(e.target.value)}
+          // While listening, the spoken words keep replacing the end of the text, so typing
+          // would be overwritten; stop the mic to edit.
+          readOnly={dictating}
           rows={8}
           className={inputClass}
           placeholder="Describe your dream..."
         />
         <div className="mt-2">
           <DictationButton
-            onText={(spoken) => setBody((prev) => appendDictation(prev, spoken, MAX_BODY_LENGTH))}
+            // Each session's words go after what was written when it started, replacing that
+            // session's earlier transcript rather than adding to it.
+            onStart={() => {
+              dictationBaseRef.current = body
+            }}
+            onTranscript={(spoken) =>
+              setBody(appendDictation(dictationBaseRef.current, spoken, MAX_BODY_LENGTH))
+            }
+            onListeningChange={setDictating}
           />
         </div>
       </div>

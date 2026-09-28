@@ -4,6 +4,7 @@ import {
   dictationErrorMessage,
   getRecognition,
   loadDictationLanguage,
+  mergeTranscripts,
   saveDictationLanguage,
   type DictationLanguage,
   type Recognition,
@@ -11,21 +12,31 @@ import {
 import { fieldClass } from '../styles/ui'
 
 /**
- * A mic button that types what you say. Each finished phrase goes to `onText`; the words still
+ * A mic button that types what you say. `onStart` marks where a listening session begins, and
+ * `onTranscript` gets everything said in it so far each time that changes (the whole session,
+ * not just the newest phrase, so browsers that repeat phrases don't repeat words). Words still
  * being recognised show underneath until they settle. Renders nothing where the browser has no
  * speech recognition (e.g. Firefox).
  */
-export default function DictationButton({ onText }: { onText: (text: string) => void }) {
+export default function DictationButton({
+  onStart,
+  onTranscript,
+  onListeningChange,
+}: {
+  onStart: () => void
+  onTranscript: (sessionText: string) => void
+  onListeningChange?: (listening: boolean) => void
+}) {
   const [Recognizer] = useState(getRecognition)
   const [language, setLanguage] = useState<DictationLanguage>(loadDictationLanguage)
   const [listening, setListening] = useState(false)
   const [interim, setInterim] = useState('')
   const [error, setError] = useState<string | null>(null)
   const recognitionRef = useRef<Recognition | null>(null)
-  // Read at result time, so a new onText from each render never restarts the recognition.
-  const onTextRef = useRef(onText)
+  // Read at result time, so new callbacks from each render never restart the recognition.
+  const callbacksRef = useRef({ onTranscript, onListeningChange })
   useEffect(() => {
-    onTextRef.current = onText
+    callbacksRef.current = { onTranscript, onListeningChange }
   })
 
   // Stop listening when the form goes away (saved, cancelled, navigated off).
@@ -40,12 +51,21 @@ export default function DictationButton({ onText }: { onText: (text: string) => 
     recognition.lang = language
     recognition.continuous = true
     recognition.interimResults = true
+    let sent = ''
     recognition.onresult = (event) => {
+      // Rebuilt from every result each time: Chrome on Android re-sends finished phrases, so
+      // only reading the new ones (from resultIndex) would still repeat them.
+      const finished: string[] = []
       let pending = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i]
-        if (result.isFinal) onTextRef.current(result[0].transcript)
+        if (result.isFinal) finished.push(result[0].transcript)
         else pending += result[0].transcript
+      }
+      const sessionText = mergeTranscripts(finished)
+      if (sessionText !== sent) {
+        sent = sessionText
+        callbacksRef.current.onTranscript(sessionText)
       }
       setInterim(pending)
     }
@@ -55,12 +75,15 @@ export default function DictationButton({ onText }: { onText: (text: string) => 
       recognitionRef.current = null
       setListening(false)
       setInterim('')
+      callbacksRef.current.onListeningChange?.(false)
     }
     recognitionRef.current = recognition
     setError(null)
     try {
       recognition.start()
+      onStart()
       setListening(true)
+      onListeningChange?.(true)
     } catch {
       recognitionRef.current = null
       setError(dictationErrorMessage('', languageLabel))
