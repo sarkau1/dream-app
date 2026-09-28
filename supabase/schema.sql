@@ -282,6 +282,36 @@ left join public.profiles p on p.user_id = d.user_id;
 
 grant select on public.dreams_with_authors to authenticated;
 
+-- The Progress page leaderboard: dreamers ranked by how many dreams they've logged, private
+-- ones included. security definer because the dreams policies hide other people's private
+-- dreams; it returns only names and counts, never dream content. Gives the top 10 plus the
+-- caller's own row, so they can see where they stand even outside the top 10.
+create or replace function public.dream_leaderboard()
+returns table (user_id uuid, display_name text, dream_count bigint, rank bigint)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with ranked as (
+    select
+      p.user_id,
+      p.display_name,
+      count(d.id) as dream_count,
+      rank() over (order by count(d.id) desc) as rank
+    from public.profiles p
+    join public.dreams d on d.user_id = p.user_id
+    group by p.user_id, p.display_name
+  )
+  select r.user_id, r.display_name, r.dream_count, r.rank
+  from ranked r
+  where r.rank <= 10 or r.user_id = auth.uid()
+  order by r.rank, r.display_name;
+$$;
+
+revoke execute on function public.dream_leaderboard() from public, anon;
+grant execute on function public.dream_leaderboard() to authenticated;
+
 -- Lets a signed-in user delete their own account. Their profile and dreams go with it through
 -- the `on delete cascade` foreign keys. security definer because only the database owner may
 -- delete from auth.users; the function can only ever delete the caller.

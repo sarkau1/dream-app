@@ -42,6 +42,7 @@ database, so after changing them, check by hand with two accounts, A and B:
 - B can delete B's own comments. A can delete any comment on A's dreams. B can't delete other
   people's comments on someone else's dream.
 - A's dreamer page, seen by A, shows the same counts B sees, which only include shared dreams.
+- The Progress leaderboard shows B only names and dream counts for others, never titles or text.
 
 ## Scripts
 
