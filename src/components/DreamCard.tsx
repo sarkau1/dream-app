@@ -23,10 +23,11 @@ export default function DreamCard({
   const text = 'body' in dream ? dream.body : dream.preview
   return (
     <li
-      className={`rounded-2xl border p-4 transition-colors sm:p-5 ${
+      // relative: the title link stretches over the whole card (see below).
+      className={`relative rounded-2xl border p-4 transition-colors sm:p-5 ${
         dream.isPrivate
-          ? 'border-amber-400/20 bg-gradient-to-br from-midnight-900/80 to-amber-950/20'
-          : 'border-midnight-700/80 bg-midnight-900/60 hover:border-midnight-600'
+          ? 'border-amber-400/20 bg-gradient-to-br from-midnight-900/80 to-amber-950/20 hover:border-amber-400/40'
+          : 'border-midnight-700/80 bg-midnight-900/60 hover:border-nebula-400/40'
       }`}
     >
       {showAuthor && (
@@ -36,10 +37,17 @@ export default function DreamCard({
       )}
 
       <div className="flex items-start justify-between gap-4">
-        <Link to={`/dreams/${dream.id}`} className="hover:text-nebula-300">
-          <h2 className="break-words text-lg font-semibold text-moon-100">{dream.title}</h2>
+        {/* The link's ::after covers the card, so a tap anywhere on it opens the dream while
+            screen readers still meet one link. Controls sit above it with z-10. */}
+        <Link
+          to={`/dreams/${dream.id}`}
+          className="group after:absolute after:inset-0 after:rounded-2xl after:content-['']"
+        >
+          <h2 className="break-words text-lg font-semibold text-moon-100 group-hover:text-nebula-300">
+            {dream.title}
+          </h2>
         </Link>
-        {action}
+        {action && <div className="relative z-10">{action}</div>}
       </div>
 
       <DreamTags dream={dream} className="mt-2" />
@@ -47,16 +55,24 @@ export default function DreamCard({
       {/* Lists show a preview; the full text lives on the dream's own page. */}
       <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-moon-300">{text}</p>
       {isLong(text) && (
-        <Link
-          to={`/dreams/${dream.id}`}
-          className="mt-1 inline-block text-sm text-nebula-300 hover:text-nebula-200"
-        >
-          Read more<span className="sr-only">: {dream.title}</span> &rarr;
-        </Link>
+        <span className="mt-1 inline-block text-sm text-nebula-300" aria-hidden>
+          Read more &rarr;
+        </span>
       )}
       {/* The byline already carries the date when the author is shown. */}
       {!showAuthor && (
         <p className="mt-3 text-xs text-moon-500">dreamt {formatDreamDate(dream.dreamtOn)}</p>
+      )}
+      {/* Counts are only loaded for the Dream Feed. */}
+      {dream.commentCount !== undefined && (
+        <p className="mt-3 flex gap-4 text-xs text-moon-400">
+          <span>
+            💬 {dream.commentCount} {dream.commentCount === 1 ? 'comment' : 'comments'}
+          </span>
+          {!!dream.reactionCount && (
+            <span className="text-aurora-300">✦ {dream.reactionCount} resonated</span>
+          )}
+        </p>
       )}
     </li>
   )

@@ -23,7 +23,21 @@ export interface DreamPost extends DreamInput {
   userId: string
   authorName: string
   createdAt: string
+  /** Only loaded for the Dream Feed. */
+  commentCount?: number
+  reactionCount?: number
 }
+
+export type FeedPeriod = 'all' | 'week' | 'month' | 'year'
+
+/** Narrows the Dream Feed; applied in the database since the feed loads a page at a time. */
+export interface FeedFilter {
+  mood: DreamMood | null
+  /** How far back the dream was dreamt. */
+  period: FeedPeriod
+}
+
+export const ALL_DREAMS_FILTER: FeedFilter = { mood: null, period: 'all' }
 
 /** Characters of the body kept in a DreamSummary; mirrors `left(body, 400)` in schema.sql. */
 export const PREVIEW_LENGTH = 400

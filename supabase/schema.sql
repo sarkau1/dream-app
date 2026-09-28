@@ -120,30 +120,6 @@ grant usage on schema public to authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.dreams to authenticated;
 
--- Dreams joined to their author's display name, plus a short preview of the text, so the app
--- reads a page of dreams in one request and the journal can list every dream without
--- downloading every full body. security_invoker makes the view run as the signed-in user, so
--- the dreams and profiles policies above still decide which rows come back.
-create or replace view public.dreams_with_authors
-  with (security_invoker = true)
-as
-select
-  d.id,
-  d.user_id,
-  d.title,
-  d.body,
-  left(d.body, 400) as preview,
-  d.mood,
-  d.symbols,
-  d.is_private,
-  d.dreamt_on,
-  d.created_at,
-  coalesce(p.display_name, 'Dreamer') as author_name
-from public.dreams d
-left join public.profiles p on p.user_id = d.user_id;
-
-grant select on public.dreams_with_authors to authenticated;
-
 -- Private notes: the dreamer's own reading of a dream (meaning, analysis, what it reminded them
 -- of). One per dream, kept in their own table so sharing a dream never shares its note.
 create table if not exists public.dream_notes (
@@ -274,6 +250,34 @@ from public.dream_comments c
 left join public.profiles p on p.user_id = c.user_id;
 
 grant select on public.dream_comments_with_authors to authenticated;
+
+-- Dreams joined to their author's display name, a short preview of the text and their comment
+-- and reaction counts, so the app reads a page of dreams in one request and the journal can
+-- list every dream without downloading every full body. Defined after the comment and reaction
+-- tables it counts. security_invoker makes the view run as the signed-in user, so
+-- the dreams and profiles policies above still decide which rows come back.
+create or replace view public.dreams_with_authors
+  with (security_invoker = true)
+as
+select
+  d.id,
+  d.user_id,
+  d.title,
+  d.body,
+  left(d.body, 400) as preview,
+  d.mood,
+  d.symbols,
+  d.is_private,
+  d.dreamt_on,
+  d.created_at,
+  coalesce(p.display_name, 'Dreamer') as author_name,
+  -- Appended last: create or replace view can only add columns at the end.
+  (select count(*) from public.dream_comments c where c.dream_id = d.id) as comment_count,
+  (select count(*) from public.dream_reactions r where r.dream_id = d.id) as reaction_count
+from public.dreams d
+left join public.profiles p on p.user_id = d.user_id;
+
+grant select on public.dreams_with_authors to authenticated;
 
 -- Lets a signed-in user delete their own account. Their profile and dreams go with it through
 -- the `on delete cascade` foreign keys. security definer because only the database owner may

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { DreamInput, DreamPost, DreamSummary } from '../types/dream'
+import type { DreamInput, DreamPost, DreamSummary, FeedFilter } from '../types/dream'
 
 type Result = Promise<{ error: string | null }>
 
@@ -11,6 +11,9 @@ export interface DreamPostContextValue {
   loadingMore: boolean
   hasMore: boolean
   error: string | null
+  feedFilter: FeedFilter
+  /** Changing the filter reloads the feed from its first page. */
+  setFeedFilter: (filter: FeedFilter) => void
   refresh: () => Promise<void>
   loadMore: () => Promise<void>
   createDream: (input: DreamInput) => Result

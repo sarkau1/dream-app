@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { addDays, todayLocal } from '../lib/dates'
 import { friendlyError } from '../lib/errors'
 import { isSupabaseConfigured, NOT_CONFIGURED_ERROR, supabase } from '../lib/supabaseClient'
 import { useAuth } from './useAuth'
 import { DreamPostContext, type DreamPostContextValue } from './useDreamPosts'
 import {
+  ALL_DREAMS_FILTER,
   PREVIEW_LENGTH,
   type DreamInput,
   type DreamMood,
   type DreamPost,
   type DreamSummary,
+  type FeedFilter,
+  type FeedPeriod,
 } from '../types/dream'
 
 const LOGGED_OUT_ERROR = 'Log in to read dreams.'
@@ -19,6 +23,7 @@ const PAGE_SIZE = 10
 const DREAMS_VIEW = 'dreams_with_authors'
 const BASE_COLUMNS = 'id, user_id, title, mood, symbols, is_private, dreamt_on, created_at, author_name'
 const FULL_COLUMNS = `${BASE_COLUMNS}, body`
+const FEED_COLUMNS = `${FULL_COLUMNS}, comment_count, reaction_count`
 const SUMMARY_COLUMNS = `${BASE_COLUMNS}, preview`
 const WRITE_COLUMNS = 'id, user_id, title, body, mood, symbols, is_private, dreamt_on, created_at'
 
@@ -58,8 +63,29 @@ function fromBase(row: BaseRow, authorName: string) {
   }
 }
 
-function toPost(row: BaseRow & { body: string; author_name?: string }, authorName?: string): DreamPost {
-  return { ...fromBase(row, authorName ?? row.author_name ?? 'Dreamer'), body: row.body }
+type PostRow = BaseRow & {
+  body: string
+  author_name?: string
+  comment_count?: number
+  reaction_count?: number
+}
+
+function toPost(row: PostRow, authorName?: string): DreamPost {
+  const post: DreamPost = {
+    ...fromBase(row, authorName ?? row.author_name ?? 'Dreamer'),
+    body: row.body,
+  }
+  if (row.comment_count !== undefined) post.commentCount = row.comment_count
+  if (row.reaction_count !== undefined) post.reactionCount = row.reaction_count
+  return post
+}
+
+const PERIOD_DAYS: Record<Exclude<FeedPeriod, 'all'>, number> = { week: 7, month: 30, year: 365 }
+
+function matchesFilter(post: DreamPost, filter: FeedFilter) {
+  if (filter.mood && post.mood !== filter.mood) return false
+  if (filter.period === 'all') return true
+  return post.dreamtOn >= addDays(todayLocal(), -PERIOD_DAYS[filter.period])
 }
 
 function toSummary(row: BaseRow & { preview: string; author_name: string }): DreamSummary {
@@ -82,8 +108,12 @@ function byCreatedAtDesc(a: { createdAt: string }, b: { createdAt: string }) {
 }
 
 /** One page of the community feed, newest first; `before` pages past the oldest dream shown. */
-function fetchFeedPage(before?: string) {
-  let query = supabase.from(DREAMS_VIEW).select(FULL_COLUMNS).eq('is_private', false)
+function fetchFeedPage(filter: FeedFilter, before?: string) {
+  let query = supabase.from(DREAMS_VIEW).select(FEED_COLUMNS).eq('is_private', false)
+  if (filter.mood) query = query.eq('mood', filter.mood)
+  if (filter.period !== 'all') {
+    query = query.gte('dreamt_on', addDays(todayLocal(), -PERIOD_DAYS[filter.period]))
+  }
   // Page by "older than the last one shown" rather than by offset, so dreams posted while
   // someone is reading don't shift the pages and show up twice.
   if (before) query = query.lt('created_at', before)
@@ -105,6 +135,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(ALL_DREAMS_FILTER)
   const [myDreams, setMyDreams] = useState<DreamSummary[]>([])
   const [loadingMyDreams, setLoadingMyDreams] = useState(false)
   const [myDreamsError, setMyDreamsError] = useState<string | null>(null)
@@ -117,11 +148,13 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
   const hasMoreRef = useRef(hasMore)
   const loadingMoreRef = useRef(loadingMore)
   const dreamsRef = useRef(dreams)
+  const feedFilterRef = useRef(feedFilter)
   const authorNameRef = useRef('Dreamer')
   useEffect(() => {
     hasMoreRef.current = hasMore
     loadingMoreRef.current = loadingMore
     dreamsRef.current = dreams
+    feedFilterRef.current = feedFilter
     authorNameRef.current = profile?.displayName ?? 'Dreamer'
   })
 
@@ -177,7 +210,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
 
-    const { data, error: feedError } = await fetchFeedPage()
+    const { data, error: feedError } = await fetchFeedPage(feedFilter)
     if (gen !== feedGenRef.current) return
 
     if (feedError) {
@@ -190,7 +223,7 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
     setDreams(posts)
     setHasMore(posts.length === PAGE_SIZE)
     setLoading(false)
-  }, [userId, authLoading])
+  }, [userId, authLoading, feedFilter])
 
   const loadMore = useCallback(async () => {
     const loaded = dreamsRef.current
@@ -199,7 +232,10 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
 
     const gen = feedGenRef.current
     setLoadingMore(true)
-    const { data, error: feedError } = await fetchFeedPage(loaded[loaded.length - 1].createdAt)
+    const { data, error: feedError } = await fetchFeedPage(
+      feedFilterRef.current,
+      loaded[loaded.length - 1].createdAt,
+    )
     if (gen !== feedGenRef.current) return
 
     if (feedError) {
@@ -228,12 +264,19 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       [...prev.filter((dream) => dream.id !== post.id), summarize(post)].sort(byDreamtOnDesc),
     )
     setDreams((prev) => {
+      const previous = prev.find((dream) => dream.id === post.id)
       const rest = prev.filter((dream) => dream.id !== post.id)
-      if (post.isPrivate) return rest
+      if (post.isPrivate || !matchesFilter(post, feedFilterRef.current)) return rest
       // Only slot it in if it falls inside the loaded range; otherwise "Load more" will reach it.
       const oldestLoaded = prev[prev.length - 1]?.createdAt
       if (hasMoreRef.current && oldestLoaded && post.createdAt < oldestLoaded) return rest
-      return [...rest, post].sort(byCreatedAtDesc)
+      // Writes don't return the counts; keep the ones already shown (a new dream has none).
+      const counted = {
+        ...post,
+        commentCount: previous?.commentCount ?? 0,
+        reactionCount: previous?.reactionCount ?? 0,
+      }
+      return [...rest, counted].sort(byCreatedAtDesc)
     })
   }, [])
 
@@ -358,6 +401,8 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       loadingMore,
       hasMore,
       error,
+      feedFilter,
+      setFeedFilter,
       refresh,
       loadMore,
       createDream,
@@ -378,6 +423,8 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       loadingMore,
       hasMore,
       error,
+      feedFilter,
+      setFeedFilter,
       refresh,
       loadMore,
       createDream,
