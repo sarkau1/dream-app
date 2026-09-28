@@ -9,6 +9,7 @@ import { primaryButtonClass, secondaryButtonClass } from '../styles/ui'
 const links = [
   { to: '/', label: 'Home', end: true },
   { to: '/journal', label: 'Journal' },
+  { to: '/progress', label: 'Progress' },
   { to: '/dreams', label: 'Dreams' },
   { to: '/web', label: 'Dream Web' },
 ]

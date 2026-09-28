@@ -14,6 +14,7 @@ import { DreamPostProvider } from './context/DreamPostContext'
 // other page is downloaded the first time it's opened, keeping the first load small on phones.
 const DreamWeb = lazy(() => import('./routes/web/DreamWeb'))
 const ProfilePage = lazy(() => import('./routes/profile/ProfilePage'))
+const ProgressPage = lazy(() => import('./routes/progress/ProgressPage'))
 const RegisterPage = lazy(() => import('./routes/auth/RegisterPage'))
 const LoginPage = lazy(() => import('./routes/auth/LoginPage'))
 const ForgotPasswordPage = lazy(() => import('./routes/auth/ForgotPasswordPage'))
@@ -52,6 +53,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DreamJournalPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/progress"
+                element={
+                  <ProtectedRoute>
+                    <ProgressPage />
                   </ProtectedRoute>
                 }
               />
