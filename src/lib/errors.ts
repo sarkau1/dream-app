@@ -13,6 +13,8 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   dreams_symbols_count: `A dream can have up to ${MAX_SYMBOLS} signs.`,
   dreams_dreamt_on_not_future: 'The dream’s date can’t be in the future.',
   profiles_display_name_length: `Display names can be up to ${MAX_DISPLAY_NAME_LENGTH} characters.`,
+  dream_notes_body_length: 'Notes can be up to 20,000 characters.',
+  dream_comments_body_length: 'Comments can be up to 1,000 characters.',
 }
 
 const OUTDATED_SCHEMA =

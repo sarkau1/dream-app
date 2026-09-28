@@ -144,6 +144,137 @@ left join public.profiles p on p.user_id = d.user_id;
 
 grant select on public.dreams_with_authors to authenticated;
 
+-- Private notes: the dreamer's own reading of a dream (meaning, analysis, what it reminded them
+-- of). One per dream, kept in their own table so sharing a dream never shares its note.
+create table if not exists public.dream_notes (
+  dream_id uuid primary key references public.dreams (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  body text not null,
+  updated_at timestamptz not null default now(),
+  constraint dream_notes_body_length check (char_length(body) between 1 and 20000)
+);
+
+alter table public.dream_notes enable row level security;
+
+drop policy if exists "Users can read their own notes" on public.dream_notes;
+create policy "Users can read their own notes"
+  on public.dream_notes for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can note their own dreams" on public.dream_notes;
+create policy "Users can note their own dreams"
+  on public.dream_notes for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.dreams d where d.id = dream_id and d.user_id = auth.uid())
+  );
+
+drop policy if exists "Users can update their own notes" on public.dream_notes;
+create policy "Users can update their own notes"
+  on public.dream_notes for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own notes" on public.dream_notes;
+create policy "Users can delete their own notes"
+  on public.dream_notes for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.dream_notes to authenticated;
+
+-- Reactions and comments on shared dreams. The `exists (select ... from dreams)` checks run
+-- under the dreams policies, so they only see dreams the caller may read: making a dream
+-- private hides its reactions and comments from everyone but its dreamer.
+create table if not exists public.dream_reactions (
+  dream_id uuid not null references public.dreams (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (dream_id, user_id)
+);
+
+create table if not exists public.dream_comments (
+  id uuid primary key default gen_random_uuid(),
+  dream_id uuid not null references public.dreams (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now(),
+  -- Mirrors MAX_COMMENT_LENGTH in src/lib/dreamSocial.ts.
+  constraint dream_comments_body_length check (char_length(body) between 1 and 1000)
+);
+
+create index if not exists dream_comments_dream_idx on public.dream_comments (dream_id, created_at);
+
+alter table public.dream_reactions enable row level security;
+alter table public.dream_comments enable row level security;
+
+drop policy if exists "Reactions are readable with their dream" on public.dream_reactions;
+create policy "Reactions are readable with their dream"
+  on public.dream_reactions for select
+  to authenticated
+  using (exists (select 1 from public.dreams d where d.id = dream_id));
+
+drop policy if exists "Users can react to shared dreams" on public.dream_reactions;
+create policy "Users can react to shared dreams"
+  on public.dream_reactions for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.dreams d where d.id = dream_id and not d.is_private)
+  );
+
+drop policy if exists "Users can remove their own reactions" on public.dream_reactions;
+create policy "Users can remove their own reactions"
+  on public.dream_reactions for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "Comments are readable with their dream" on public.dream_comments;
+create policy "Comments are readable with their dream"
+  on public.dream_comments for select
+  to authenticated
+  using (exists (select 1 from public.dreams d where d.id = dream_id));
+
+drop policy if exists "Users can comment on shared dreams" on public.dream_comments;
+create policy "Users can comment on shared dreams"
+  on public.dream_comments for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.dreams d where d.id = dream_id and not d.is_private)
+  );
+
+-- A comment can be removed by whoever wrote it, or by the dreamer whose dream it's on.
+drop policy if exists "Commenters and dreamers can delete comments" on public.dream_comments;
+create policy "Commenters and dreamers can delete comments"
+  on public.dream_comments for delete
+  to authenticated
+  using (
+    auth.uid() = user_id
+    or exists (select 1 from public.dreams d where d.id = dream_id and d.user_id = auth.uid())
+  );
+
+grant select, insert, delete on public.dream_reactions to authenticated;
+grant select, insert, delete on public.dream_comments to authenticated;
+
+create or replace view public.dream_comments_with_authors
+  with (security_invoker = true)
+as
+select
+  c.id,
+  c.dream_id,
+  c.user_id,
+  c.body,
+  c.created_at,
+  coalesce(p.display_name, 'Dreamer') as author_name
+from public.dream_comments c
+left join public.profiles p on p.user_id = c.user_id;
+
+grant select on public.dream_comments_with_authors to authenticated;
+
 -- Lets a signed-in user delete their own account. Their profile and dreams go with it through
 -- the `on delete cascade` foreign keys. security definer because only the database owner may
 -- delete from auth.users; the function can only ever delete the caller.

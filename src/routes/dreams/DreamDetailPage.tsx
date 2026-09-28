@@ -4,6 +4,8 @@ import DreamForm from '../../components/DreamForm'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import AuthorByline from '../../components/AuthorByline'
+import DreamDiscussion from '../../components/DreamDiscussion'
+import DreamNote from '../../components/DreamNote'
 import DreamTags from '../../components/DreamTags'
 import { draftKey } from '../../lib/drafts'
 import type { DreamPost } from '../../types/dream'
@@ -158,6 +160,12 @@ export default function DreamDetailPage() {
             <FormError message={error} />
           </div>
         </div>
+      )}
+
+      {!editing && isOwner && <DreamNote dreamId={dream.id} userId={user.id} />}
+      {/* Private dreams have no audience, so nothing to react to or comment on. */}
+      {!editing && !dream.isPrivate && (
+        <DreamDiscussion dreamId={dream.id} dreamerId={dream.userId} userId={user.id} />
       )}
     </div>
   )
