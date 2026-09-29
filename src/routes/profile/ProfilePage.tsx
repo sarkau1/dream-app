@@ -7,6 +7,7 @@ import { useDreamPosts } from '../../context/useDreamPosts'
 import { todayLocal } from '../../lib/dates'
 import { essenceFromDreams } from '../../lib/essence'
 import { downloadFile, dreamsToJson, dreamsToMarkdown } from '../../lib/exportDreams'
+import { fetchHabits } from '../../lib/habitsApi'
 import { MIN_PASSWORD_LENGTH, newPasswordProblem } from '../../lib/passwords'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { useSubmit } from '../../lib/useSubmit'
@@ -203,6 +204,7 @@ type ExportFormat = 'markdown' | 'json'
 
 function ExportSection() {
   const { exportMyDreams } = useDreamPosts()
+  const { user } = useAuth()
   const [format, setFormat] = useState<ExportFormat | null>(null)
   const submit = useSubmit()
 
@@ -215,7 +217,18 @@ function ExportSection() {
       if (chosen === 'markdown') {
         downloadFile(`dream-journal-${today}.md`, dreamsToMarkdown(dreams, today), 'text/markdown')
       } else {
-        downloadFile(`dream-journal-${today}.json`, dreamsToJson(dreams, today), 'application/json')
+        // The JSON backup also carries habits and every day they were ticked.
+        const habitData = user ? await fetchHabits(user.id) : null
+        if (habitData?.error) return { error: habitData.error }
+        const habits = (habitData?.habits ?? []).map((habit) => ({
+          habit,
+          doneDays: [...(habitData?.checks.get(habit.id) ?? [])],
+        }))
+        downloadFile(
+          `dream-journal-${today}.json`,
+          dreamsToJson(dreams, today, habits),
+          'application/json',
+        )
       }
       return { error: null }
     })
@@ -228,7 +241,7 @@ function ExportSection() {
     <section className={sectionClass}>
       <SectionHeading title="Download your journal">
         Every dream, private ones included, in full. Markdown reads like a diary; JSON is for
-        backups or moving to another app.
+        backups or moving to another app, and also includes your habits.
       </SectionHeading>
       <FormError message={submit.error} />
       <div className="flex flex-wrap gap-3">

@@ -1,3 +1,4 @@
+import type { Habit } from './habits'
 import type { ExportedDream } from '../types/dream'
 
 /** A readable journal: one section per dream, oldest first, in plain Markdown. */
@@ -17,10 +18,23 @@ export function dreamsToMarkdown(dreams: ExportedDream[], exportedOn: string): s
 }
 
 /** Everything, machine-readable, for moving to another app or keeping a backup. */
-export function dreamsToJson(dreams: ExportedDream[], exportedOn: string): string {
+export function dreamsToJson(
+  dreams: ExportedDream[],
+  exportedOn: string,
+  habits: { habit: Habit; doneDays: string[] }[] = [],
+): string {
   return JSON.stringify(
     {
       exportedOn,
+      habits: habits.map(({ habit, doneDays }) => ({
+        name: habit.name,
+        emoji: habit.emoji,
+        // Monday = 0 .. Sunday = 6.
+        days: habit.days,
+        createdOn: habit.createdOn,
+        archivedOn: habit.archivedOn,
+        doneDays: [...doneDays].sort(),
+      })),
       dreams: dreams.map((dream) => ({
         id: dream.id,
         dreamtOn: dream.dreamtOn,

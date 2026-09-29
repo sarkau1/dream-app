@@ -23,6 +23,7 @@ const NewDreamPage = lazy(() => import('./routes/dreams/NewDreamPage'))
 const DreamDetailPage = lazy(() => import('./routes/dreams/DreamDetailPage'))
 const DreamerPage = lazy(() => import('./routes/dreamers/DreamerPage'))
 const AdminPage = lazy(() => import('./routes/admin/AdminPage'))
+const HabitsPage = lazy(() => import('./routes/habits/HabitsPage'))
 
 function App() {
   return (
@@ -71,6 +72,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ProgressPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/habits"
+                element={
+                  <ProtectedRoute>
+                    <HabitsPage />
                   </ProtectedRoute>
                 }
               />

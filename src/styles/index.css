@@ -80,3 +80,67 @@ h3 {
 .essence-pop {
   animation: essence-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
+
+/* Habits: a springy pop and a drawn tick when a habit is done, sparks bursting out of it, the
+   day's ring glowing once everything is done, and a slow sheen across the Mirror card. */
+@keyframes habit-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.habit-pop {
+  animation: habit-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes habit-check-draw {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+.habit-check-draw {
+  stroke-dasharray: 24;
+  animation: habit-check-draw 0.3s ease-out both;
+}
+
+@keyframes habit-spark {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+
+.habit-spark {
+  animation: habit-spark 0.65s ease-out forwards;
+}
+
+@keyframes ring-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(94, 230, 200, 0.45)); }
+  50% { filter: drop-shadow(0 0 18px rgba(94, 230, 200, 0.9)); }
+}
+
+.ring-glow {
+  animation: ring-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes mirror-sheen {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  60%, 100% { transform: translateX(320%) skewX(-20deg); }
+}
+
+.mirror-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+  animation: mirror-sheen 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rise-in {
+  animation: rise-in 0.4s ease-out both;
+}

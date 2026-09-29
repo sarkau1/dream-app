@@ -46,6 +46,16 @@ app**, and the home page shows an Install button. It then opens full screen from
 The service worker is only registered in production builds, so try installing on the deployed
 site or with `npm run build && npm run preview`.
 
+## Habits
+
+`/habits` is a private habit tracker. **Today** lists the day's habits to tick off, around a
+progress ring; **Mirror** shows the honest numbers: this week's promises kept against last
+week's, done and missed per habit, streaks, a Strong / Slipping / Neglected label from the last
+30 days, and a 12-week grid where missed days show as gaps. The database keeps it honest: only
+today and yesterday can be ticked or unticked, a habit can't be backdated, and stopping one
+archives it so its history keeps counting. Habits are visible only to their owner (admins
+included) and are part of the JSON export.
+
 ## Admins and moderation
 
 Admins can hide shared dreams from the feed, delete any comment, reset offensive display names,
@@ -80,6 +90,8 @@ database, so after changing them, check by hand with two accounts, A and B:
 - A's dreamer page, seen by A, shows the same counts B sees, which only include shared dreams.
 - The home page leaderboard shows B only names and dream counts for others, never titles or text.
 - B can't read reports, can't make themselves an admin, and can't unhide a dream a moderator hid.
+- Nobody but B can see B's habits. B can't tick a day older than yesterday, backdate a habit,
+  or stop one from a past date.
 - An admin can't read B's private dreams or notes, but can hide B's shared dreams, delete B's
   comments and suspend B. Suspended, B can still write private dreams but can't share, comment
   or react, and B's shared dreams leave the feed until the suspension is lifted.

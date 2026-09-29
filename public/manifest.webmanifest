@@ -26,6 +26,11 @@
       "name": "Journal",
       "url": "./journal",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Habits",
+      "url": "./habits",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

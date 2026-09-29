@@ -10,6 +10,7 @@ const links = [
   { to: '/', label: 'Home', end: true },
   { to: '/journal', label: 'Journal' },
   { to: '/progress', label: 'Progress' },
+  { to: '/habits', label: 'Habits' },
   { to: '/dreams', label: 'Dreams' },
   { to: '/web', label: 'Dream Web' },
 ]
@@ -111,8 +112,8 @@ export default function NavBar() {
             <span className="text-nebula-400">Lucent</span> Dreaming
           </NavLink>
 
-          {/* Desktop: everything in one row. */}
-          <div className="hidden items-center gap-3 md:flex">
+          {/* Wide screens: everything in one row (from lg: with six links it doesn’t fit on tablets). */}
+          <div className="hidden items-center gap-3 lg:flex">
             <ul className="flex items-center gap-1">
               {visibleLinks.map((link) => (
                 <li key={link.to}>
@@ -133,7 +134,7 @@ export default function NavBar() {
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-midnight-700 text-moon-300 hover:text-moon-100 md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-midnight-700 text-moon-300 hover:text-moon-100 lg:hidden"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -142,7 +143,7 @@ export default function NavBar() {
         </div>
 
         {menuOpen && (
-          <div id="mobile-menu" className="mt-3 space-y-4 pb-2 md:hidden">
+          <div id="mobile-menu" className="mt-3 space-y-4 pb-2 lg:hidden">
             <ul className="space-y-1">
               {visibleLinks.map((link) => (
                 <li key={link.to}>

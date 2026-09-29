@@ -659,6 +659,125 @@ grant execute on function public.admin_close_report(uuid, text) to authenticated
 revoke execute on function public.admin_overview() from public, anon;
 grant execute on function public.admin_overview() to authenticated;
 
+-- Habits: the "Mirror" habit tracker. Entirely private: only the user who made a habit can see
+-- it or its check marks (admins included), and nothing about it reaches the feed or the
+-- leaderboard. The rules keep it honest: days can only be ticked or unticked for today and
+-- yesterday (with a day of slack for timezones, since the server's date is UTC), a habit can't
+-- be backdated, and stopping a habit archives it so its history keeps counting. Dates are the
+-- user's own calendar days (src/lib/dates), weekdays Monday = 0 .. Sunday = 6.
+create table if not exists public.habits (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  emoji text,
+  days smallint[] not null default '{0,1,2,3,4,5,6}',
+  sort_order integer not null default 0,
+  created_on date not null default current_date,
+  archived_on date,
+  created_at timestamptz not null default now(),
+  -- Mirror MAX_HABIT_NAME_LENGTH in src/lib/habits.ts.
+  constraint habits_name_length check (char_length(name) between 1 and 80),
+  constraint habits_emoji_length check (emoji is null or char_length(emoji) <= 16),
+  constraint habits_days_valid check (
+    days <@ '{0,1,2,3,4,5,6}'::smallint[] and cardinality(days) between 1 and 7
+  ),
+  constraint habits_archived_after_created check (archived_on is null or archived_on >= created_on)
+);
+
+create table if not exists public.habit_checks (
+  habit_id uuid not null references public.habits (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  day date not null,
+  created_at timestamptz not null default now(),
+  primary key (habit_id, day)
+);
+
+create index if not exists habits_user_idx on public.habits (user_id, sort_order);
+create index if not exists habit_checks_user_idx on public.habit_checks (user_id, day);
+
+alter table public.habits enable row level security;
+alter table public.habit_checks enable row level security;
+
+drop policy if exists "Users can read their own habits" on public.habits;
+create policy "Users can read their own habits"
+  on public.habits for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- No backdating: a habit starts today (give or take the timezone slack).
+drop policy if exists "Users can add habits from today" on public.habits;
+create policy "Users can add habits from today"
+  on public.habits for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id and created_on between current_date - 1 and current_date + 1
+  );
+
+drop policy if exists "Users can edit their own habits" on public.habits;
+create policy "Users can edit their own habits"
+  on public.habits for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Deleting is only for fixing a habit added by mistake; after that it can only be archived.
+drop policy if exists "Users can delete habits added today" on public.habits;
+create policy "Users can delete habits added today"
+  on public.habits for delete
+  to authenticated
+  using (auth.uid() = user_id and created_on >= current_date - 1);
+
+drop policy if exists "Users can read their own habit checks" on public.habit_checks;
+create policy "Users can read their own habit checks"
+  on public.habit_checks for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can tick today or yesterday" on public.habit_checks;
+create policy "Users can tick today or yesterday"
+  on public.habit_checks for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id
+    and day between current_date - 2 and current_date + 1
+    and exists (select 1 from public.habits h where h.id = habit_id and h.user_id = auth.uid())
+  );
+
+drop policy if exists "Users can untick today or yesterday" on public.habit_checks;
+create policy "Users can untick today or yesterday"
+  on public.habit_checks for delete
+  to authenticated
+  using (auth.uid() = user_id and day between current_date - 2 and current_date + 1);
+
+-- Archiving can't be backdated either, or it would quietly erase the misses before it.
+create or replace function public.habits_guard_archive()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.archived_on is distinct from old.archived_on
+     and new.archived_on is not null
+     and new.archived_on < current_date - 1 then
+    raise exception 'habit_archive_past';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists habits_guard_archive on public.habits;
+create trigger habits_guard_archive
+  before update on public.habits
+  for each row execute function public.habits_guard_archive();
+
+-- The app never changes who a habit belongs to or when it started.
+revoke insert, update on public.habits from authenticated;
+grant select, delete on public.habits to authenticated;
+grant insert (user_id, name, emoji, days, sort_order, created_on) on public.habits to authenticated;
+grant update (name, emoji, days, sort_order, archived_on) on public.habits to authenticated;
+grant select, delete on public.habit_checks to authenticated;
+grant insert (habit_id, user_id, day) on public.habit_checks to authenticated;
+
 -- Lets a signed-in user delete their own account. Their profile and dreams go with it through
 -- the `on delete cascade` foreign keys. security definer because only the database owner may
 -- delete from auth.users; the function can only ever delete the caller.

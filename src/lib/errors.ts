@@ -15,6 +15,9 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   profiles_display_name_length: `Display names can be up to ${MAX_DISPLAY_NAME_LENGTH} characters.`,
   dream_notes_body_length: 'Notes can be up to 20,000 characters.',
   dream_comments_body_length: 'Comments can be up to 1,000 characters.',
+  habits_name_length: 'A habit’s name can be up to 80 characters.',
+  habits_days_valid: 'Pick at least one day for the habit.',
+  habit_archive_past: 'A habit can only be stopped from today, not from a day in the past.',
   // Raised by report_content() and the admin_*() functions.
   report_own: 'You can’t report your own dreams or comments.',
   report_target_missing: 'That can’t be reported any more. It may have been deleted or made private.',
