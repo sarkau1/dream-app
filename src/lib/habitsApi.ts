@@ -111,12 +111,25 @@ export async function setArchived(id: string, day: string | null): Result {
   return toError(error)
 }
 
-/** Only allowed for a habit added today (a typo); after that it can only be archived. */
+/** Erases the habit and every tick; archiving (setArchived) is the way that keeps the record. */
 export async function deleteHabit(id: string): Result {
   const { data, error } = await supabase.from('habits').delete().eq('id', id).select('id')
   if (error) return toError(error)
-  if (!data?.length) return { error: 'Only a habit added today can be deleted. Archive it instead.' }
+  if (!data?.length) return { error: 'That habit could not be found. It may already be gone.' }
   return { error: null }
+}
+
+/** Saves a new order: `ids` first to last. Only rows whose position changed are written. */
+export async function saveOrder(ids: string[], current: Map<string, number>): Result {
+  const changed = ids
+    .map((id, index) => ({ id, sortOrder: index + 1 }))
+    .filter(({ id, sortOrder }) => current.get(id) !== sortOrder)
+  const results = await Promise.all(
+    changed.map(({ id, sortOrder }) =>
+      supabase.from('habits').update({ sort_order: sortOrder }).eq('id', id),
+    ),
+  )
+  return toError(results.find((result) => result.error)?.error ?? null)
 }
 
 export async function setCheck(habitId: string, userId: string, day: string, done: boolean): Result {

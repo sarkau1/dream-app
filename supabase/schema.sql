@@ -663,7 +663,8 @@ grant execute on function public.admin_overview() to authenticated;
 -- it or its check marks (admins included), and nothing about it reaches the feed or the
 -- leaderboard. The rules keep it honest: days can only be ticked or unticked for today and
 -- yesterday (with a day of slack for timezones, since the server's date is UTC), a habit can't
--- be backdated, and stopping a habit archives it so its history keeps counting. Dates are the
+-- be backdated, and stopping a habit archives it so its history keeps counting (deleting it, which
+-- erases the history, is still allowed). Dates are the
 -- user's own calendar days (src/lib/dates), weekdays Monday = 0 .. Sunday = 6.
 create table if not exists public.habits (
   id uuid primary key default gen_random_uuid(),
@@ -720,12 +721,15 @@ create policy "Users can edit their own habits"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- Deleting is only for fixing a habit added by mistake; after that it can only be archived.
+-- Deleting erases a habit and its history; the app steers people to archiving instead, which
+-- keeps the record, but deleting is their call. (An earlier version only allowed it on the day
+-- a habit was added; that policy is dropped here.)
 drop policy if exists "Users can delete habits added today" on public.habits;
-create policy "Users can delete habits added today"
+drop policy if exists "Users can delete their own habits" on public.habits;
+create policy "Users can delete their own habits"
   on public.habits for delete
   to authenticated
-  using (auth.uid() = user_id and created_on >= current_date - 1);
+  using (auth.uid() = user_id);
 
 drop policy if exists "Users can read their own habit checks" on public.habit_checks;
 create policy "Users can read their own habit checks"

@@ -8,6 +8,7 @@ import {
   addHabit,
   deleteHabit,
   fetchHabits,
+  saveOrder,
   setArchived,
   setCheck,
   updateHabit,
@@ -113,6 +114,18 @@ export default function HabitsPage() {
   // day in between as missed, and its record should stay as it was.
   const restore = (habit: Habit) => add({ name: habit.name, emoji: habit.emoji, days: habit.days })
 
+  // Shown in the new order straight away; put back if saving fails.
+  async function reorder(ids: string[]) {
+    const before = habits ?? []
+    const position = new Map(ids.map((id, index) => [id, index + 1]))
+    setHabits(before.map((h) => (position.has(h.id) ? { ...h, sortOrder: position.get(h.id)! } : h)))
+    const result = await saveOrder(ids, new Map(before.map((h) => [h.id, h.sortOrder])))
+    if (result.error) {
+      setHabits(before)
+      setError(result.error)
+    }
+  }
+
   async function remove(habit: Habit) {
     const result = await deleteHabit(habit.id)
     if (!result.error) setHabits((prev) => (prev ?? []).filter((h) => h.id !== habit.id))
@@ -155,7 +168,17 @@ export default function HabitsPage() {
           <div className="h-16 animate-pulse rounded-2xl bg-midnight-900/70" />
         </div>
       ) : tab === 'today' ? (
-        <TodayTab habits={habits} checks={checks} today={today} onToggle={toggle} onAdd={add} />
+        <TodayTab
+          habits={habits}
+          checks={checks}
+          today={today}
+          onToggle={toggle}
+          onAdd={add}
+          onEdit={edit}
+          onStop={archive}
+          onDelete={remove}
+          onReorder={reorder}
+        />
       ) : (
         <MirrorTab
           habits={habits}

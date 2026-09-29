@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import HabitForm from '../../components/habits/HabitForm'
 import { FormError } from '../../components/TextField'
-import { addDays, formatDreamDate } from '../../lib/dates'
+import { formatDreamDate } from '../../lib/dates'
 import {
   bestWeekday,
   describeDays,
@@ -103,8 +103,7 @@ function HabitCard({
   const [error, setError] = useState<string | null>(null)
   const label = LABELS[stats.label]
   const archived = habit.archivedOn !== null
-  // Only a habit added today or yesterday can be deleted (a typo); the database agrees.
-  const deletable = habit.createdOn >= addDays(today, -1)
+  const ticked = checks.size
 
   async function act(action: () => Result, confirmText?: string) {
     if (confirmText && !window.confirm(confirmText)) return
@@ -193,15 +192,18 @@ function HabitCard({
             </button>
           </>
         )}
-        {deletable && (
-          <button
-            type="button"
-            onClick={() => act(onDelete, `Delete “${habit.name}”? Only possible on the day it was added.`)}
-            className="rounded-full border border-rose-500/40 px-3 py-1.5 text-rose-300 hover:bg-rose-500/10"
-          >
-            Delete
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() =>
+            act(
+              onDelete,
+              `Delete “${habit.name}” for good? ${ticked === 0 ? 'It has no ticks yet.' : `Its ${ticked} ticked ${ticked === 1 ? 'day' : 'days'} will be erased from your Mirror.`} This can’t be undone. (Stop habit keeps the history.)`,
+            )
+          }
+          className="rounded-full border border-rose-500/40 px-3 py-1.5 text-rose-300 hover:bg-rose-500/10"
+        >
+          Delete
+        </button>
       </div>
     </li>
   )

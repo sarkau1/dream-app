@@ -9,6 +9,7 @@ import {
   habitCalendar,
   habitLabel,
   habitsDueOn,
+  moveItem,
   tally,
   verdict,
   type Habit,
@@ -140,6 +141,14 @@ describe('habitCalendar and habitsDueOn', () => {
       habit({ id: 'archived', archivedOn: '2026-09-15' }),
     ]
     expect(habitsDueOn(habits, TODAY).map((h) => h.id)).toEqual(['a', 'b'])
+  })
+})
+
+describe('moveItem', () => {
+  it('moves an item down, up, or leaves it', () => {
+    expect(moveItem(['a', 'b', 'c', 'd'], 0, 2)).toEqual(['b', 'c', 'a', 'd'])
+    expect(moveItem(['a', 'b', 'c', 'd'], 3, 1)).toEqual(['a', 'd', 'b', 'c'])
+    expect(moveItem(['a', 'b'], 1, 1)).toEqual(['a', 'b'])
   })
 })
 

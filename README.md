@@ -53,8 +53,10 @@ progress ring; **Mirror** shows the honest numbers: this week's promises kept ag
 week's, done and missed per habit, streaks, a Strong / Slipping / Neglected label from the last
 30 days, and a 12-week grid where missed days show as gaps. The database keeps it honest: only
 today and yesterday can be ticked or unticked, a habit can't be backdated, and stopping one
-archives it so its history keeps counting. Habits are visible only to their owner (admins
-included) and are part of the JSON export.
+archives it so its history keeps counting (deleting one, which erases its history, takes a
+clear warning). Tap a habit's emoji to edit, stop or delete it, and use Reorder to drag habits
+into order. Habits are visible only to their owner (admins included) and are part of the JSON
+export.
 
 ## Admins and moderation
 

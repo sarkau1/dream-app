@@ -1,5 +1,7 @@
 import { useState, type CSSProperties } from 'react'
+import HabitEditSheet from '../../components/habits/HabitEditSheet'
 import HabitForm from '../../components/habits/HabitForm'
+import ReorderList from '../../components/habits/ReorderList'
 import ProgressRing from '../../components/habits/ProgressRing'
 import { addDays, formatDreamDate } from '../../lib/dates'
 import {
@@ -22,6 +24,8 @@ const SUGGESTIONS: HabitInput[] = [
 
 const EMPTY = new Set<string>()
 
+type Result = Promise<{ error: string | null }>
+
 // Eight sparks fly out of the tick, each on its own angle.
 const SPARKS = Array.from({ length: 8 }, (_, i) => {
   const angle = (i / 8) * Math.PI * 2
@@ -33,11 +37,13 @@ function HabitRow({
   done,
   streak,
   onToggle,
+  onEdit,
 }: {
   habit: Habit
   done: boolean
   streak: number
   onToggle: () => void
+  onEdit: () => void
 }) {
   // Bumped on each tick, so the pop and the sparks replay every time.
   const [burst, setBurst] = useState(0)
@@ -51,26 +57,39 @@ function HabitRow({
   }
 
   return (
-    <li>
+    <li
+      className={`relative flex min-h-16 items-stretch rounded-2xl border transition-all duration-300 ${
+        done
+          ? 'border-aurora-400/40 bg-gradient-to-r from-aurora-400/15 via-nebula-500/10 to-transparent'
+          : 'border-midnight-700 bg-midnight-900/70 hover:border-nebula-400/40'
+      }`}
+    >
+      {/* The emoji is its own button: tap it to edit, tap the rest of the row to tick. */}
       <button
         type="button"
-        role="checkbox"
-        aria-checked={done}
-        onClick={handleClick}
-        className={`group relative flex min-h-16 w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-300 active:scale-[0.98] ${
-          done
-            ? 'border-aurora-400/40 bg-gradient-to-r from-aurora-400/15 via-nebula-500/10 to-transparent'
-            : 'border-midnight-700 bg-midnight-900/70 hover:border-nebula-400/40'
-        }`}
+        onClick={onEdit}
+        aria-label={`Edit ${habit.name}`}
+        className="flex shrink-0 items-center py-3 pl-4 pr-1"
       >
         <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-2xl transition ${
+          className={`relative flex h-11 w-11 items-center justify-center rounded-xl text-2xl transition hover:ring-2 hover:ring-nebula-400/60 ${
             done ? 'bg-aurora-400/15' : 'bg-midnight-800'
           }`}
           aria-hidden
         >
           {habit.emoji ?? '✦'}
+          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-midnight-600 bg-midnight-900 text-[10px] text-moon-300">
+            ✎
+          </span>
         </span>
+      </button>
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={done}
+        onClick={handleClick}
+        className="group flex min-w-0 flex-1 items-center gap-3 py-3 pl-2 pr-4 text-left transition-transform active:scale-[0.98]"
+      >
         <span className="min-w-0 flex-1">
           <span
             className={`block truncate font-medium transition-colors ${done ? 'text-moon-100' : 'text-moon-300'}`}
@@ -117,17 +136,27 @@ export default function TodayTab({
   today,
   onToggle,
   onAdd,
+  onEdit,
+  onStop,
+  onDelete,
+  onReorder,
 }: {
   habits: Habit[]
   checks: HabitChecks
   today: string
   onToggle: (habit: Habit, day: string) => void
-  onAdd: (input: HabitInput) => Promise<{ error: string | null }>
+  onAdd: (input: HabitInput) => Result
+  onEdit: (habit: Habit, input: HabitInput) => Result
+  onStop: (habit: Habit) => Result
+  onDelete: (habit: Habit) => Result
+  onReorder: (ids: string[]) => void
 }) {
   const yesterday = addDays(today, -1)
   // Yesterday stays fixable (you forgot to tick), then it's locked for good.
   const [day, setDay] = useState<'today' | 'yesterday'>('today')
   const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [reordering, setReordering] = useState(false)
   const shownDay = day === 'today' ? today : yesterday
 
   const due = habitsDueOn(habits, shownDay)
@@ -137,7 +166,10 @@ export default function TodayTab({
     (habit) => isActiveOn(habit, shownDay) && !due.some((d) => d.id === habit.id),
   )
   const missedYesterday = habitsDueOn(habits, yesterday).filter((h) => !isDone(h, yesterday)).length
-  const active = habits.filter((habit) => habit.archivedOn === null)
+  const active = habits
+    .filter((habit) => habit.archivedOn === null)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  const editing = habits.find((habit) => habit.id === editingId) ?? null
 
   const left = due.length - doneCount
   const headline =
@@ -244,25 +276,76 @@ export default function TodayTab({
         </button>
       )}
 
-      <ul className="space-y-2.5">
-        {due.map((habit) => (
-          <HabitRow
-            key={habit.id}
-            habit={habit}
-            done={isDone(habit, shownDay)}
-            streak={currentStreak(habit, checks.get(habit.id) ?? EMPTY, today)}
-            onToggle={() => onToggle(habit, shownDay)}
-          />
-        ))}
-      </ul>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium uppercase tracking-widest text-moon-500">
+          {reordering ? 'Drag to arrange' : 'Your habits'}
+        </h2>
+        {active.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setReordering(!reordering)}
+            aria-pressed={reordering}
+            className={`min-h-9 rounded-full border px-4 text-sm transition-colors ${
+              reordering
+                ? 'border-aurora-400/60 bg-aurora-400/15 text-aurora-200'
+                : 'border-midnight-700 text-moon-400 hover:text-moon-100'
+            }`}
+          >
+            {reordering ? 'Done' : '↕ Reorder'}
+          </button>
+        )}
+      </div>
 
-      {notDue.length > 0 && (
-        <p className="text-sm text-moon-500">
-          Not scheduled {day}: {notDue.map((h) => `${h.emoji ?? '✦'} ${h.name}`).join(' · ')}
-        </p>
+      {reordering ? (
+        <ReorderList habits={active} onReorder={onReorder} />
+      ) : (
+        <>
+          <ul className="space-y-2.5">
+            {due.map((habit) => (
+              <HabitRow
+                key={habit.id}
+                habit={habit}
+                done={isDone(habit, shownDay)}
+                streak={currentStreak(habit, checks.get(habit.id) ?? EMPTY, today)}
+                onToggle={() => onToggle(habit, shownDay)}
+                onEdit={() => setEditingId(habit.id)}
+              />
+            ))}
+          </ul>
+
+          {notDue.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm text-moon-500">Not scheduled {day}:</p>
+              <div className="flex flex-wrap gap-2">
+                {notDue.map((habit) => (
+                  <button
+                    key={habit.id}
+                    type="button"
+                    onClick={() => setEditingId(habit.id)}
+                    aria-label={`Edit ${habit.name}`}
+                    className="min-h-9 rounded-full border border-midnight-700 px-3 text-sm text-moon-400 hover:text-moon-100"
+                  >
+                    <span aria-hidden>{habit.emoji ?? '✦'}</span> {habit.name} <span aria-hidden>✎</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {adding ? (
+      {editing && (
+        <HabitEditSheet
+          habit={editing}
+          tickedDays={(checks.get(editing.id) ?? EMPTY).size}
+          onSave={(input) => onEdit(editing, input)}
+          onStop={() => onStop(editing)}
+          onDelete={() => onDelete(editing)}
+          onClose={() => setEditingId(null)}
+        />
+      )}
+
+      {reordering ? null : adding ? (
         <HabitForm
           submitLabel="Add habit"
           onSubmit={async (input) => {

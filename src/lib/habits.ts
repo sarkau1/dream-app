@@ -209,6 +209,14 @@ export function habitsDueOn(habits: Habit[], day: string): Habit[] {
   return habits.filter((habit) => isScheduledOn(habit, day)).sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
+/** The list with the item at `from` moved to `to`, for reordering habits. */
+export function moveItem<T>(items: T[], from: number, to: number): T[] {
+  const next = [...items]
+  const [item] = next.splice(from, 1)
+  next.splice(to, 0, item)
+  return next
+}
+
 /** "Every day", "Weekdays", "Weekends" or "Mon, Wed, Fri". */
 export function describeDays(days: number[]): string {
   const sorted = [...days].sort()
