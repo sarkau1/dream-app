@@ -154,3 +154,109 @@ h3 {
 .sheet-up {
   animation: sheet-up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
+
+/* Home: the three pillars as glowing hexagons. The outer hexagon is the gradient border, the
+   inner one (inset 2px) the dark face; the drop-shadow on the link follows the clipped shape. */
+.hex {
+  --hex-glow: rgba(124, 92, 255, 0.35);
+  --hex-edge: linear-gradient(160deg, var(--color-nebula-400), var(--color-midnight-600) 55%, var(--color-aurora-400));
+  position: relative;
+  display: block;
+  width: 16rem;
+  aspect-ratio: 0.866;
+  filter: drop-shadow(0 0 14px var(--hex-glow));
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.35s ease;
+}
+
+.hex-aurora {
+  --hex-glow: rgba(94, 230, 200, 0.3);
+  --hex-edge: linear-gradient(160deg, var(--color-aurora-300), var(--color-midnight-600) 55%, var(--color-nebula-400));
+}
+
+.hex::before,
+.hex-face {
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.hex::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--hex-edge);
+}
+
+.hex-face {
+  position: absolute;
+  inset: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 2rem;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(124, 92, 255, 0.22), transparent 60%),
+    var(--color-midnight-900);
+}
+
+.hex:hover,
+.hex:focus-visible {
+  transform: translateY(-6px) scale(1.03);
+  filter: drop-shadow(0 0 28px var(--hex-glow));
+  outline: none;
+}
+
+.hex:focus-visible .hex-face {
+  background: var(--color-midnight-800);
+}
+
+@keyframes hex-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+
+.hex-float {
+  animation: hex-float 6s ease-in-out infinite;
+}
+
+/* Home: the waking/sleeping yin-yang turns slowly, and holds still while you aim at a half.
+   Each half's label rides along inside its head but spins the other way, so it stays upright. */
+@keyframes yin-yang-spin {
+  to { transform: rotate(360deg); }
+}
+
+.yin-yang,
+.yin-yang-label {
+  animation: yin-yang-spin 40s linear infinite;
+}
+
+.yin-yang-label {
+  animation-direction: reverse;
+}
+
+.yin-yang-wrap:hover .yin-yang,
+.yin-yang-wrap:hover .yin-yang-label,
+.yin-yang-wrap:focus-within .yin-yang,
+.yin-yang-wrap:focus-within .yin-yang-label {
+  animation-play-state: paused;
+}
+
+.yin-yang svg {
+  filter: drop-shadow(0 0 24px rgba(124, 92, 255, 0.35)) drop-shadow(0 0 40px rgba(94, 230, 200, 0.12));
+}
+
+.yin-yang path {
+  cursor: pointer;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.yin-yang[data-active] path {
+  opacity: 0.55;
+}
+
+.yin-yang[data-active='wake'] .yy-wake,
+.yin-yang[data-active='sleep'] .yy-sleep {
+  opacity: 1;
+  filter: brightness(1.15);
+}

@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import DreamCard from '../../components/DreamCard'
-import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
 import { useDreamPosts } from '../../context/useDreamPosts'
-import { formatDreamMonth } from '../../lib/dates'
+import { formatDreamMonth, todayLocal } from '../../lib/dates'
+import { useDreamImageUrls } from '../../lib/dreamImages'
 import type { DreamSummary } from '../../types/dream'
 import { primaryButtonClass } from '../../styles/ui'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import DreamCardSkeleton from '../../components/DreamCardSkeleton'
 import { FormError } from '../../components/TextField'
+import JournalEntry from './JournalEntry'
 
 type JournalFilter = 'all' | 'private' | 'shared'
 
 const JOURNAL_FILTERS: { value: JournalFilter; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'private', label: 'Private only' },
-  { value: 'shared', label: 'In feed' },
+  { value: 'private', label: 'Private' },
+  { value: 'shared', label: 'Shared' },
 ]
 
 const NEW_JOURNAL_DREAM = '/dreams/new?from=journal'
@@ -36,26 +36,6 @@ function mostCommon(values: string[]): string | null {
     }
   }
   return best
-}
-
-// Read-only here; whether a dream is shared is changed when editing it.
-function PrivacyBadge({ dream }: { dream: DreamSummary }) {
-  // A shared dream a moderator hid, or shared while you're suspended, isn't in the feed.
-  const offFeed = !dream.isPrivate && (dream.hiddenAt || dream.authorSuspended)
-  const [label, colors, title] = dream.isPrivate
-    ? ['Private', 'border-amber-400/40 bg-amber-400/10 text-amber-200', undefined]
-    : offFeed
-      ? [
-          'Hidden',
-          'border-rose-400/40 bg-rose-500/10 text-rose-200',
-          dream.hiddenAt ? 'Hidden from the feed by a moderator' : 'Not in the feed while you’re suspended',
-        ]
-      : ['In feed', 'border-nebula-400/40 bg-nebula-500/10 text-nebula-200', undefined]
-  return (
-    <span title={title} className={`rounded-full border px-2.5 py-0.5 text-xs ${colors}`}>
-      {label}
-    </span>
-  )
 }
 
 export default function DreamJournalPage() {
@@ -86,7 +66,7 @@ export default function DreamJournalPage() {
 
   const stats = useMemo(
     () => ({
-      shared: myDreams.filter((dream) => !dream.isPrivate).length,
+      thisMonth: myDreams.filter((dream) => dream.dreamtOn.startsWith(todayLocal().slice(0, 7))).length,
       topMood: mostCommon(myDreams.flatMap((dream) => (dream.mood ? [dream.mood] : []))),
       topSymbol: mostCommon(
         myDreams.flatMap((dream) => dream.symbols.map((symbol) => symbol.toLowerCase())),
@@ -127,12 +107,22 @@ export default function DreamJournalPage() {
     return [...groups]
   }, [matches, visibleCount])
 
+  // Signed once for every picture on screen, rather than one request per card.
+  const imageUrls = useDreamImageUrls(monthGroups.flatMap(([, dreams]) => dreams.map((d) => d.imagePath)))
+
   const filterClass = (value: JournalFilter) =>
-    `rounded-full border px-3.5 py-2 text-sm transition-colors sm:px-3 sm:py-1 sm:text-xs ${
+    `min-h-9 flex-1 rounded-full px-4 text-sm transition-colors sm:flex-none ${
       filter === value
-        ? 'border-amber-400/50 bg-amber-400/10 text-amber-200'
-        : 'border-midnight-700 text-moon-400 hover:text-moon-100'
+        ? 'bg-midnight-700 text-moon-100 shadow-inner shadow-black/30'
+        : 'text-moon-500 hover:text-moon-200'
     }`
+
+  const statItems = [
+    { label: 'Dreams', value: myDreams.length },
+    { label: 'This month', value: stats.thisMonth },
+    { label: 'Top mood', value: stats.topMood ?? '—' },
+    { label: 'Top symbol', value: stats.topSymbol ?? '—' },
+  ]
 
   let content
   if (myDreamsError) {
@@ -141,19 +131,16 @@ export default function DreamJournalPage() {
     content = <DreamCardSkeleton label="Opening your journal..." />
   } else if (myDreams.length === 0) {
     content = (
-      <div className="rounded-2xl border border-dashed border-amber-400/30 bg-amber-400/5 p-8 text-center">
-        <p className="text-4xl" aria-hidden>
-          📓
+      <div className="rounded-3xl border border-midnight-700/60 bg-gradient-to-b from-midnight-900/80 to-transparent px-6 py-12 text-center">
+        <p className="font-serif text-5xl text-nebula-200/80" aria-hidden>
+          ☾
         </p>
-        <p className="mt-3 font-medium text-moon-100">Your journal is empty</p>
-        <p className="mt-1 text-sm text-moon-400">
-          Every dream you write is stored here, private by default. You decide which ones show up
-          in the Dream Feed.
+        <p className="mt-4 font-serif text-2xl text-moon-100">The first page is blank</p>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-moon-400">
+          Write a dream down the moment you wake, before it fades. Everything here is private
+          unless you choose to share it.
         </p>
-        <Link
-          to={NEW_JOURNAL_DREAM}
-          className="mt-4 inline-block rounded-full border border-amber-400/50 px-4 py-2 text-sm text-amber-200 hover:bg-amber-400/10"
-        >
+        <Link to={NEW_JOURNAL_DREAM} className={`mt-6 ${primaryButtonClass}`}>
           Write your first dream
         </Link>
       </div>
@@ -161,41 +148,33 @@ export default function DreamJournalPage() {
   } else {
     content = (
       <>
-        <dl className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
-          <div className="rounded-xl border border-midnight-700 bg-midnight-900/60 p-3">
-            <dt className="text-xs text-moon-500">Dreams</dt>
-            <dd className="mt-1 text-lg font-semibold text-moon-100">{myDreams.length}</dd>
-          </div>
-          <div className="rounded-xl border border-midnight-700 bg-midnight-900/60 p-3">
-            <dt className="text-xs text-moon-500">In feed</dt>
-            <dd className="mt-1 text-lg font-semibold text-moon-100">{stats.shared}</dd>
-          </div>
-          <div className="rounded-xl border border-midnight-700 bg-midnight-900/60 p-3">
-            <dt className="text-xs text-moon-500">Top mood</dt>
-            <dd className="mt-1 truncate text-sm font-medium text-moon-100">
-              {stats.topMood ?? '—'}
-            </dd>
-          </div>
-          <div className="rounded-xl border border-midnight-700 bg-midnight-900/60 p-3">
-            <dt className="text-xs text-moon-500">Top symbol</dt>
-            <dd className="mt-1 truncate text-sm font-medium text-moon-100">
-              {stats.topSymbol ?? '—'}
-            </dd>
-          </div>
+        <dl className="grid grid-cols-2 divide-midnight-700/70 rounded-2xl border border-midnight-700/60 bg-midnight-900/40 sm:grid-cols-4 sm:divide-x">
+          {statItems.map((item) => (
+            <div key={item.label} className="px-4 py-3 text-center sm:py-4">
+              <dt className="text-[11px] tracking-[0.2em] text-moon-500 uppercase">{item.label}</dt>
+              <dd className="mt-1 truncate font-serif text-xl text-moon-100 capitalize">{item.value}</dd>
+            </div>
+          ))}
         </dl>
 
-        <div className="space-y-3">
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value)
-              setVisibleCount(PAGE_SIZE)
-            }}
-            placeholder="Search your journal by title, text, mood or symbol..."
-            className="w-full rounded-full border border-midnight-700 bg-midnight-900/60 px-4 py-2 text-sm text-moon-100 placeholder:text-moon-500 focus:border-amber-400/50 focus:outline-none"
-          />
-          <div role="group" aria-label="Filter dreams" className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="relative flex-1">
+            <span className="sr-only">Search your journal</span>
+            <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-moon-500" aria-hidden>
+              ⌕
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setVisibleCount(PAGE_SIZE)
+              }}
+              placeholder="Search titles, text, moods, symbols…"
+              className="min-h-11 w-full rounded-full border border-midnight-700/70 bg-midnight-900/60 py-2 pr-4 pl-10 text-base text-moon-100 placeholder:text-moon-500 transition-colors focus:border-nebula-400/60 focus:ring-2 focus:ring-nebula-400/20 focus:outline-none sm:text-sm"
+            />
+          </label>
+          <div role="group" aria-label="Filter dreams" className="flex rounded-full border border-midnight-700/70 bg-midnight-900/60 p-1">
             {JOURNAL_FILTERS.map(({ value, label }) => (
               <button
                 key={value}
@@ -213,20 +192,25 @@ export default function DreamJournalPage() {
           </div>
         </div>
 
-        {monthGroups.length === 0 && <p className="text-moon-400">No dreams match.</p>}
+        {monthGroups.length === 0 && (
+          <p className="py-8 text-center font-serif text-lg text-moon-400 italic">No dreams match.</p>
+        )}
 
         {monthGroups.map(([month, monthDreams]) => (
-          <section key={month} className="space-y-3">
-            <h2 className="text-xs font-medium uppercase tracking-wider text-moon-500">
-              {month} &middot; {monthTotals.get(month)}
+          <section key={month} className="space-y-4">
+            <h2 className="flex items-baseline gap-3">
+              <span className="font-serif text-2xl text-moon-100">{month}</span>
+              <span className="text-xs tracking-widest text-moon-500 uppercase">
+                {monthTotals.get(month)} {monthTotals.get(month) === 1 ? 'dream' : 'dreams'}
+              </span>
             </h2>
-            <ul className="space-y-4">
+            {/* The timeline: a faint line between the dates and the entries (see JournalEntry). */}
+            <ul className="relative space-y-4 before:absolute before:top-2 before:bottom-2 before:left-[3.75rem] before:w-px before:bg-gradient-to-b before:from-nebula-400/50 before:via-midnight-600 before:to-transparent sm:before:left-[4.75rem]">
               {monthDreams.map((dream) => (
-                <DreamCard
+                <JournalEntry
                   key={dream.id}
                   dream={dream}
-                  showAuthor={false}
-                  action={<PrivacyBadge dream={dream} />}
+                  imageUrl={dream.imagePath ? imageUrls.get(dream.imagePath) : null}
                 />
               ))}
             </ul>
@@ -237,7 +221,7 @@ export default function DreamJournalPage() {
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-            className="w-full rounded-full border border-midnight-700 py-2 text-sm text-moon-300 hover:text-moon-100"
+            className="min-h-11 w-full rounded-full border border-midnight-700/70 text-sm text-moon-400 transition-colors hover:border-nebula-400/40 hover:text-moon-100"
           >
             Show more ({matches.length - visibleCount} left)
           </button>
@@ -247,27 +231,17 @@ export default function DreamJournalPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="mx-auto max-w-3xl space-y-8">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-midnight-700/60 pb-6">
         <div>
-          <h1 className="text-3xl font-semibold text-moon-100">Dream Journal</h1>
-          <p className="mt-1 text-sm text-moon-400">
-            All your dreams, private by default. Edit a dream to share it in the{' '}
-            <Link to="/dreams" className="text-nebula-300 hover:text-nebula-200">
-              Dream Feed
-            </Link>
-            .
-          </p>
+          <p className="text-xs tracking-[0.3em] text-nebula-300/80 uppercase">Sleeping life</p>
+          <h1 className="mt-2 font-serif text-4xl text-moon-100 sm:text-5xl">Dream Journal</h1>
+          <p className="mt-2 text-sm text-moon-400">Every dream you remember, private by default.</p>
         </div>
-        <Link
-          to={NEW_JOURNAL_DREAM}
-          className={`shrink-0 ${primaryButtonClass}`}
-        >
-          Write a dream
+        <Link to={NEW_JOURNAL_DREAM} className={`shrink-0 ${primaryButtonClass}`}>
+          <span aria-hidden>✎</span> Write a dream
         </Link>
-      </div>
-
-      <EssenceEarnedNotice />
+      </header>
 
       {content}
     </div>

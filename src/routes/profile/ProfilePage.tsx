@@ -4,8 +4,9 @@ import Avatar from '../../components/Avatar'
 import TextField, { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
+import { useHabits } from '../../context/useHabits'
 import { todayLocal } from '../../lib/dates'
-import { essenceFromDreams } from '../../lib/essence'
+import { essenceFromHabits } from '../../lib/essence'
 import { downloadFile, dreamsToJson, dreamsToMarkdown } from '../../lib/exportDreams'
 import { fetchHabits } from '../../lib/habitsApi'
 import { MIN_PASSWORD_LENGTH, newPasswordProblem } from '../../lib/passwords'
@@ -360,6 +361,7 @@ export default function ProfilePage() {
   // ProtectedRoute guarantees a user here.
   const { user, profile, profileError } = useAuth()
   const { myDreams, loadingMyDreams } = useDreamPosts()
+  const { habits, checks } = useHabits()
   if (!user) return null
 
   const name = profile?.displayName ?? 'Dreamer'
@@ -368,7 +370,7 @@ export default function ProfilePage() {
     { label: 'Dreams', value: myDreams.length },
     { label: 'Lucid', value: myDreams.filter((dream) => dream.mood === 'Lucid').length },
     { label: 'In feed', value: myDreams.filter((dream) => !dream.isPrivate).length },
-    { label: '✦ Essence', value: essenceFromDreams(myDreams) },
+    { label: '✦ Essence', value: habits === null ? '…' : essenceFromHabits(habits, checks, todayLocal()) },
   ]
 
   let nameSection

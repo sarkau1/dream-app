@@ -209,7 +209,7 @@ export default function ProgressPage() {
           <Stat
             label="Lucid dreams"
             value={progress.lucidDreams}
-            hint={`${lucidRate}% of dreams · ✦ ${progress.essence}`}
+            hint={`${lucidRate}% of dreams`}
           />
         </dl>
 

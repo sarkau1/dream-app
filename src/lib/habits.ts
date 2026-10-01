@@ -227,3 +227,16 @@ export function describeDays(days: number[]): string {
   const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   return sorted.map((d) => names[d]).join(', ')
 }
+
+/**
+ * The habits of the current run: the running ones, plus any stopped after the run began. The run
+ * begins when the oldest running habit started, so restarting (every habit stopped and started
+ * fresh today, see HabitsPage) leaves the old record out of Today and the Mirror. With nothing
+ * running, every habit is kept.
+ */
+export function currentRun(habits: Habit[]): Habit[] {
+  const running = habits.filter((habit) => habit.archivedOn === null)
+  if (running.length === 0) return habits
+  const start = running.reduce((first, habit) => (habit.createdOn < first ? habit.createdOn : first), running[0].createdOn)
+  return habits.filter((habit) => habit.archivedOn === null || habit.archivedOn > start)
+}

@@ -22,7 +22,7 @@ export default function LoginPage() {
     e.preventDefault()
     if (!email.trim() || !password) return
     if (await submit.run(() => signIn(email.trim(), password))) {
-      navigate(from ? `${from.pathname}${from.search}` : '/dreams', { replace: true })
+      navigate(from ? `${from.pathname}${from.search}` : '/', { replace: true })
     }
   }
 

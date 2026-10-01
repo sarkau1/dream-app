@@ -29,6 +29,8 @@ alter table public.dreams add column if not exists dreamt_on date;
 -- still sees it in their journal, with the reason.
 alter table public.dreams add column if not exists hidden_at timestamptz;
 alter table public.dreams add column if not exists hidden_reason text;
+-- The dream's picture in the dream-images storage bucket (see "Dream pictures" below).
+alter table public.dreams add column if not exists image_path text;
 -- Backfill existing rows from when they were posted, then lock the column down.
 update public.dreams set dreamt_on = created_at::date where dreamt_on is null;
 alter table public.dreams alter column dreamt_on set default current_date;
@@ -53,6 +55,10 @@ alter table public.dreams drop constraint if exists dreams_dreamt_on_not_future;
 -- A day of slack for timezones ahead of the server's.
 alter table public.dreams add constraint dreams_dreamt_on_not_future
   check (dreamt_on <= current_date + 1) not valid;
+-- A dream can only point at a picture in its own dreamer's folder.
+alter table public.dreams drop constraint if exists dreams_image_in_own_folder;
+alter table public.dreams add constraint dreams_image_in_own_folder
+  check (image_path is null or image_path like (user_id::text || '/%')) not valid;
 alter table public.profiles drop constraint if exists profiles_display_name_length;
 alter table public.profiles add constraint profiles_display_name_length
   check (char_length(display_name) between 1 and 50) not valid;
@@ -189,8 +195,8 @@ grant select, insert, update on public.profiles to authenticated;
 -- those through admin_hide_dream). Revoked first so re-running narrows an older, broader grant.
 revoke insert, update on public.dreams from authenticated;
 grant select, delete on public.dreams to authenticated;
-grant insert (user_id, title, body, mood, symbols, is_private, dreamt_on) on public.dreams to authenticated;
-grant update (title, body, mood, symbols, is_private, dreamt_on) on public.dreams to authenticated;
+grant insert (user_id, title, body, mood, symbols, is_private, dreamt_on, image_path) on public.dreams to authenticated;
+grant update (title, body, mood, symbols, is_private, dreamt_on, image_path) on public.dreams to authenticated;
 
 -- Private notes: the dreamer's own reading of a dream (meaning, analysis, what it reminded them
 -- of). One per dream, kept in their own table so sharing a dream never shares its note.
@@ -384,6 +390,7 @@ select
   d.symbols,
   d.is_private,
   d.dreamt_on,
+  d.image_path,
   d.created_at,
   coalesce(p.display_name, 'Dreamer') as author_name,
   (select count(*) from public.dream_comments c where c.dream_id = d.id) as comment_count,
@@ -782,8 +789,47 @@ grant update (name, emoji, days, sort_order, archived_on) on public.habits to au
 grant select, delete on public.habit_checks to authenticated;
 grant insert (habit_id, user_id, day) on public.habit_checks to authenticated;
 
+-- Dream pictures: a private bucket, one folder per dreamer ("<user id>/<file>"). Dreamers add
+-- and remove files only in their own folder. A picture can be seen by its dreamer, and by anyone
+-- who can see a dream pointing at it: the dreams policies above decide that, so a private
+-- dream's picture stays private and a hidden one leaves the feed with its dream. The app shows
+-- pictures through short-lived signed links. Mirror MAX_IMAGE_BYTES in src/lib/dreamImages.ts.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('dream-images', 'dream-images', false, 5242880, array['image/webp', 'image/jpeg', 'image/png'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create index if not exists dreams_image_path_idx on public.dreams (image_path) where image_path is not null;
+
+drop policy if exists "Dreamers upload pictures to their own folder" on storage.objects;
+create policy "Dreamers upload pictures to their own folder"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'dream-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Dreamers delete their own pictures" on storage.objects;
+create policy "Dreamers delete their own pictures"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'dream-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Dream pictures are visible with their dream" on storage.objects;
+create policy "Dream pictures are visible with their dream"
+  on storage.objects for select
+  to authenticated
+  using (
+    bucket_id = 'dream-images'
+    and (
+      (storage.foldername(name))[1] = auth.uid()::text
+      or exists (select 1 from public.dreams d where d.image_path = storage.objects.name)
+    )
+  );
+
 -- Lets a signed-in user delete their own account. Their profile and dreams go with it through
--- the `on delete cascade` foreign keys. security definer because only the database owner may
+-- the `on delete cascade` foreign keys; the app removes their dream pictures first, since storage
+-- files don't cascade. security definer because only the database owner may
 -- delete from auth.users; the function can only ever delete the caller.
 create or replace function public.delete_own_account()
 returns void

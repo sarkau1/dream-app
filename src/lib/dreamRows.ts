@@ -15,11 +15,11 @@ import {
 // Writes go to `dreams`.
 export const DREAMS_VIEW = 'dreams_with_authors'
 const BASE_COLUMNS =
-  'id, user_id, title, mood, symbols, is_private, dreamt_on, created_at, author_name, hidden_at, hidden_reason, author_suspended'
+  'id, user_id, title, mood, symbols, is_private, dreamt_on, image_path, created_at, author_name, hidden_at, hidden_reason, author_suspended'
 export const FULL_COLUMNS = `${BASE_COLUMNS}, body`
 const SHARED_COLUMNS = `${FULL_COLUMNS}, comment_count, reaction_count, reacted_by_me`
 export const SUMMARY_COLUMNS = `${BASE_COLUMNS}, preview`
-export const WRITE_COLUMNS = 'id, user_id, title, body, mood, symbols, is_private, dreamt_on, created_at'
+export const WRITE_COLUMNS = 'id, user_id, title, body, mood, symbols, is_private, dreamt_on, image_path, created_at'
 
 export const SHARED_PAGE_SIZE = 10
 
@@ -31,6 +31,7 @@ interface BaseRow {
   symbols: string[] | null
   is_private: boolean
   dreamt_on: string
+  image_path?: string | null
   created_at: string
   // Only from the view, not from writes to `dreams`.
   hidden_at?: string | null
@@ -54,6 +55,8 @@ export function toRow(input: DreamInput) {
     symbols: input.symbols,
     is_private: input.isPrivate,
     dreamt_on: input.dreamtOn,
+    // Only sent when the form set it, so other writes leave the picture alone.
+    ...(input.imagePath !== undefined && { image_path: input.imagePath }),
   }
 }
 
@@ -67,6 +70,7 @@ function fromBase(row: BaseRow, authorName: string) {
     symbols: row.symbols ?? [],
     isPrivate: row.is_private,
     dreamtOn: row.dreamt_on,
+    imagePath: row.image_path ?? null,
     createdAt: row.created_at,
     hiddenAt: row.hidden_at ?? null,
     hiddenReason: row.hidden_reason ?? null,

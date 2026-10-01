@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   bestStreak,
   bestWeekday,
+  currentRun,
   currentStreak,
   dayStatus,
   describeDays,
@@ -158,5 +159,24 @@ describe('describeDays', () => {
     expect(describeDays([4, 0, 1, 2, 3])).toBe('Weekdays')
     expect(describeDays([5, 6])).toBe('Weekends')
     expect(describeDays([0, 2, 4])).toBe('Mon, Wed, Fri')
+  })
+})
+
+describe('currentRun', () => {
+  it('drops habits that ended when or before the run began', () => {
+    const old = habit({ id: 'old', createdOn: '2026-09-01', archivedOn: '2026-09-30' })
+    const fresh = habit({ id: 'fresh', createdOn: '2026-09-30' })
+    expect(currentRun([old, fresh]).map((h) => h.id)).toEqual(['fresh'])
+  })
+
+  it('keeps habits stopped during the run', () => {
+    const running = habit({ id: 'running', createdOn: '2026-09-01' })
+    const stopped = habit({ id: 'stopped', createdOn: '2026-09-05', archivedOn: '2026-09-20' })
+    expect(currentRun([running, stopped]).map((h) => h.id)).toEqual(['running', 'stopped'])
+  })
+
+  it('keeps everything when nothing is running', () => {
+    const stopped = habit({ id: 'stopped', archivedOn: '2026-09-20' })
+    expect(currentRun([stopped])).toEqual([stopped])
   })
 })

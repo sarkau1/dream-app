@@ -5,6 +5,7 @@ import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import AuthorByline from '../../components/AuthorByline'
 import DreamDiscussion from '../../components/DreamDiscussion'
+import DreamImage from '../../components/DreamImage'
 import DreamNote from '../../components/DreamNote'
 import DreamTags from '../../components/DreamTags'
 import { draftKey } from '../../lib/drafts'
@@ -150,6 +151,7 @@ export default function DreamDetailPage() {
             symbols: dream.symbols,
             isPrivate: dream.isPrivate,
             dreamtOn: dream.dreamtOn,
+            imagePath: dream.imagePath,
           }}
           draftKey={user ? draftKey(user.id, dream.id) : undefined}
           editsSavedDream
@@ -196,6 +198,8 @@ export default function DreamDetailPage() {
           </div>
 
           <DreamTags dream={dream} large className="mt-3" />
+
+          {dream.imagePath && <DreamImage path={dream.imagePath} title={dream.title} className="mt-4" />}
 
           <p className="mt-4 whitespace-pre-wrap text-moon-300">{dream.body}</p>
           <div className="mt-3">

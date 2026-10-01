@@ -1,5 +1,4 @@
 import { addDays, weekdayIndex } from './dates'
-import { essenceFromDreams } from './essence'
 import { DREAM_MOODS, type DreamMood, type DreamPost } from '../types/dream'
 
 type ProgressDream = Pick<DreamPost, 'dreamtOn' | 'mood' | 'symbols'>
@@ -27,7 +26,6 @@ export interface Progress {
   dreams: number
   nights: number
   lucidDreams: number
-  essence: number
   currentStreak: number
   longestStreak: number
   /** Whether a dream has been logged for today yet; if not, the current streak is at risk. */
@@ -118,7 +116,6 @@ export function progressFromDreams(dreams: ProgressDream[], today: string): Prog
     dreams: dreams.length,
     nights: days.length,
     lucidDreams,
-    essence: essenceFromDreams(dreams),
     currentStreak: current,
     longestStreak: longest,
     loggedToday: counts.has(today),

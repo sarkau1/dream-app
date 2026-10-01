@@ -4,6 +4,7 @@ import HabitForm from '../../components/habits/HabitForm'
 import ReorderList from '../../components/habits/ReorderList'
 import ProgressRing from '../../components/habits/ProgressRing'
 import { addDays, formatDreamDate } from '../../lib/dates'
+import { dangerOutlineButtonClass, secondaryButtonClass } from '../../styles/ui'
 import {
   currentStreak,
   habitsDueOn,
@@ -140,6 +141,7 @@ export default function TodayTab({
   onStop,
   onDelete,
   onReorder,
+  onRestart,
 }: {
   habits: Habit[]
   checks: HabitChecks
@@ -150,13 +152,19 @@ export default function TodayTab({
   onStop: (habit: Habit) => Result
   onDelete: (habit: Habit) => Result
   onReorder: (ids: string[]) => void
+  onRestart: () => Result
 }) {
   const yesterday = addDays(today, -1)
   // Yesterday stays fixable (you forgot to tick), then it's locked for good.
-  const [day, setDay] = useState<'today' | 'yesterday'>('today')
+  const [chosenDay, setDay] = useState<'today' | 'yesterday'>('today')
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [reordering, setReordering] = useState(false)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
+  const [restarting, setRestarting] = useState(false)
+  // Yesterday is only offered when something was due then (not, say, on the day you restart).
+  const canFixYesterday = habitsDueOn(habits, yesterday).length > 0
+  const day = chosenDay === 'yesterday' && canFixYesterday ? 'yesterday' : 'today'
   const shownDay = day === 'today' ? today : yesterday
 
   const due = habitsDueOn(habits, shownDay)
@@ -214,6 +222,7 @@ export default function TodayTab({
 
   return (
     <div className="space-y-6">
+      {canFixYesterday && (
       <div role="group" aria-label="Day" className="flex rounded-full border border-midnight-700 bg-midnight-900/70 p-1 text-sm">
         {(['today', 'yesterday'] as const).map((option) => (
           <button
@@ -229,6 +238,7 @@ export default function TodayTab({
           </button>
         ))}
       </div>
+      )}
 
       <section className="relative flex items-center gap-5 overflow-hidden rounded-3xl border border-midnight-700/80 bg-gradient-to-br from-midnight-900 via-midnight-900 to-nebula-500/10 p-5">
         <ProgressRing
@@ -364,6 +374,54 @@ export default function TodayTab({
           <span className="text-xl leading-none" aria-hidden>+</span> Add a habit
         </button>
       )}
+
+      {/* Slipped? Start the run again from today. Asked here, not in a browser dialog. */}
+      {!reordering &&
+        (confirmingRestart ? (
+          <div className="rise-in space-y-3 rounded-2xl border border-rose-400/30 bg-rose-500/5 p-4">
+            <p className="font-medium text-moon-100">Start over from today?</p>
+            <p className="text-sm text-moon-300">
+              Every habit starts fresh today: streaks back to 0, today unticked, no misses. The
+              old record is set aside, and Dream Essence you’ve earned is kept.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={restarting}
+                onClick={async () => {
+                  setRestarting(true)
+                  const result = await onRestart()
+                  setRestarting(false)
+                  if (!result.error) {
+                    setConfirmingRestart(false)
+                    setDay('today')
+                  }
+                }}
+                className={dangerOutlineButtonClass}
+              >
+                {restarting ? 'Restarting...' : '↺ Restart from today'}
+              </button>
+              <button
+                type="button"
+                disabled={restarting}
+                onClick={() => setConfirmingRestart(false)}
+                className={secondaryButtonClass}
+              >
+                Keep going
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setConfirmingRestart(true)}
+              className="min-h-11 px-4 text-sm text-moon-500 transition-colors hover:text-rose-300"
+            >
+              ↺ Restart my routine
+            </button>
+          </div>
+        ))}
     </div>
   )
 }

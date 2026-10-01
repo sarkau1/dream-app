@@ -31,7 +31,7 @@ export default function RegisterPage() {
     })
     if (!ok) return
     if (needsConfirmation) setConfirmEmailSent(true)
-    else navigate('/dreams')
+    else navigate('/')
   }
 
   if (confirmEmailSent) {

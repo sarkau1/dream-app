@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import EssencePop from '../../components/EssencePop'
 import { FormError } from '../../components/TextField'
 import { useAuth } from '../../context/useAuth'
+import { useHabits } from '../../context/useHabits'
 import { todayLocal } from '../../lib/dates'
-import type { Habit, HabitChecks } from '../../lib/habits'
+import { ESSENCE_PERFECT_DAY, isPerfectDay } from '../../lib/essence'
+import { currentRun, type Habit, type HabitChecks } from '../../lib/habits'
 import {
   addHabit,
   deleteHabit,
@@ -44,25 +47,15 @@ export default function HabitsPage() {
   const userId = user?.id ?? null
   const [searchParams, setSearchParams] = useSearchParams()
   const tab: Tab = searchParams.get('tab') === 'mirror' ? 'mirror' : 'today'
-  const [habits, setHabits] = useState<Habit[] | null>(null)
-  const [checks, setChecks] = useState<HabitChecks>(new Map())
-  const [error, setError] = useState<string | null>(null)
+  // Loaded once for the whole app (see HabitsProvider): the nav bar's Dream Essence needs them too.
+  const { habits, checks, error, setHabits, setChecks, setError } = useHabits()
+  // Bumped each time a tick completes the day, to replay the "+10" pop.
+  const [perfectDayPops, setPerfectDayPops] = useState(0)
   // Read when rendering, so the page moves to the new day if it stays open past midnight.
   const today = todayLocal()
-
-  useEffect(() => {
-    if (!userId) return
-    let cancelled = false
-    fetchHabits(userId).then((result) => {
-      if (cancelled) return
-      setHabits(result.habits)
-      setChecks(result.checks)
-      setError(result.error)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [userId])
+  // After a restart, the habits it stopped are left out of Today and the Mirror. They still
+  // count for Dream Essence, which works from every habit.
+  const shown = useMemo(() => (habits ? currentRun(habits) : null), [habits])
 
   const chooseTab = (value: Tab) =>
     setSearchParams(value === 'today' ? {} : { tab: value }, { replace: true })
@@ -72,6 +65,8 @@ export default function HabitsPage() {
     async (habit: Habit, day: string) => {
       if (!userId) return
       const done = !(checks.get(habit.id)?.has(day) ?? false)
+      const next = withCheck(checks, habit.id, day, done)
+      if (done && habits && isPerfectDay(habits, next, day)) setPerfectDayPops((n) => n + 1)
       setChecks((prev) => withCheck(prev, habit.id, day, done))
       setError(null)
       const result = await setCheck(habit.id, userId, day, done)
@@ -80,7 +75,7 @@ export default function HabitsPage() {
         setError(result.error)
       }
     },
-    [checks, userId],
+    [checks, habits, userId, setChecks, setError],
   )
 
   async function add(input: HabitInput) {
@@ -126,6 +121,34 @@ export default function HabitsPage() {
     }
   }
 
+  // Starting over after a slip, for a clean run at 100%. Each running habit is stopped today and
+  // a fresh copy starts today, so streaks and rates begin again; the old record is kept but left
+  // out of view (see currentRun), and essence already earned stays earned. A habit added today has no past to keep, so
+  // only today's ticks are cleared. Reloaded afterwards so a half-failed restart shows as it is.
+  async function restart() {
+    if (!userId || !habits) return { error: 'Log in to restart your habits.' }
+    const day = todayLocal()
+    const results = await Promise.all(
+      habits
+        .filter((h) => h.archivedOn === null)
+        .map(async (h) => {
+          if (h.createdOn === day) {
+            return checks.get(h.id)?.has(day) ? setCheck(h.id, userId, day, false) : { error: null }
+          }
+          const stopped = await setArchived(h.id, day)
+          if (stopped.error) return stopped
+          return addHabit(userId, { name: h.name, emoji: h.emoji, days: h.days }, h.sortOrder, day)
+        }),
+    )
+    const reloaded = await fetchHabits(userId)
+    setHabits(reloaded.habits)
+    setChecks(reloaded.checks)
+    setPerfectDayPops(0)
+    const error = results.find((r) => r.error)?.error ?? reloaded.error
+    setError(error)
+    return { error }
+  }
+
   async function remove(habit: Habit) {
     const result = await deleteHabit(habit.id)
     if (!result.error) setHabits((prev) => (prev ?? []).filter((h) => h.id !== habit.id))
@@ -161,7 +184,14 @@ export default function HabitsPage() {
 
       <FormError message={error} />
 
-      {habits === null ? (
+      {/* Every habit due that day is done. The total is derived from the ticks (see lib/essence). */}
+      {perfectDayPops > 0 && (
+        <div className="flex justify-center" role="status">
+          <EssencePop key={perfectDayPops} amount={ESSENCE_PERFECT_DAY} />
+        </div>
+      )}
+
+      {shown === null ? (
         <div className="space-y-3" aria-label="Loading habits">
           <div className="h-44 animate-pulse rounded-3xl bg-midnight-900/70" />
           <div className="h-16 animate-pulse rounded-2xl bg-midnight-900/70" />
@@ -169,7 +199,7 @@ export default function HabitsPage() {
         </div>
       ) : tab === 'today' ? (
         <TodayTab
-          habits={habits}
+          habits={shown}
           checks={checks}
           today={today}
           onToggle={toggle}
@@ -178,10 +208,11 @@ export default function HabitsPage() {
           onStop={archive}
           onDelete={remove}
           onReorder={reorder}
+          onRestart={restart}
         />
       ) : (
         <MirrorTab
-          habits={habits}
+          habits={shown}
           checks={checks}
           today={today}
           onEdit={edit}

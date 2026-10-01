@@ -2,17 +2,16 @@ import { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { useAuth } from '../context/useAuth'
-import { useDreamPosts } from '../context/useDreamPosts'
-import { essenceFromDreams } from '../lib/essence'
+import { useHabits } from '../context/useHabits'
+import { todayLocal } from '../lib/dates'
+import { ESSENCE_PERFECT_DAY, essenceFromHabits } from '../lib/essence'
 import { primaryButtonClass, secondaryButtonClass } from '../styles/ui'
 
+// Dreams (the feed), Dream Web and Progress are hidden for now; their pages still work by URL.
 const links = [
   { to: '/', label: 'Home', end: true },
-  { to: '/journal', label: 'Journal' },
-  { to: '/progress', label: 'Progress' },
   { to: '/habits', label: 'Habits' },
-  { to: '/dreams', label: 'Dreams' },
-  { to: '/web', label: 'Dream Web' },
+  { to: '/journal', label: 'Journal' },
 ]
 
 // Only admins see it; the page and the database check too.
@@ -30,7 +29,7 @@ const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function NavBar() {
   const { user, profile, signOut } = useAuth()
-  const { myDreams, loadingMyDreams } = useDreamPosts()
+  const { habits, checks } = useHabits()
   const navigate = useNavigate()
   const location = useLocation()
   // Remember which page the menu was opened on: following any link, including ones in the page
@@ -47,12 +46,12 @@ export default function NavBar() {
 
   const essence = user && (
     <span
-      title="Dream Essence: earned for every lucid dream in your journal"
+      title={`Dream Essence: ${ESSENCE_PERFECT_DAY} for every day you complete all your habits`}
       className="inline-flex items-center gap-1.5 rounded-full border border-aurora-400/30 bg-aurora-400/10 px-3 py-1.5 text-xs font-medium text-aurora-300"
     >
       <span aria-hidden="true">✦</span>
-      {/* Don't flash 0 while the journal is still loading. */}
-      {loadingMyDreams && myDreams.length === 0 ? '…' : essenceFromDreams(myDreams)}
+      {/* Don't flash 0 while the habits are still loading. */}
+      {habits === null ? '…' : essenceFromHabits(habits, checks, todayLocal())}
       <span className="sr-only">Dream Essence</span>
     </span>
   )

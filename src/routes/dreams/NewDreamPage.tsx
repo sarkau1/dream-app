@@ -3,7 +3,6 @@ import DreamForm from '../../components/DreamForm'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { draftKey } from '../../lib/drafts'
-import { ESSENCE_LUCID_DREAM } from '../../lib/essence'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
 export default function NewDreamPage() {
@@ -25,10 +24,6 @@ export default function NewDreamPage() {
         <h1 className="mt-2 text-3xl font-semibold text-moon-100">
           {fromJournal ? 'Write a dream' : 'Share a dream'}
         </h1>
-        <p className="mt-1 text-sm text-moon-400">
-          Mark a dream as <span className="text-nebula-200">Lucid</span> to earn{' '}
-          <span className="text-aurora-300">✦{ESSENCE_LUCID_DREAM} Dream Essence</span>.
-        </p>
       </div>
 
       <DreamForm
@@ -40,11 +35,7 @@ export default function NewDreamPage() {
         onSubmit={createDream}
         onSuccess={(values) =>
           // A private dream would be invisible in the Feed, so land in the Journal instead.
-          navigate(values.isPrivate ? '/journal' : backTo, {
-            // The total itself is derived from saved dreams (see lib/essence); this only drives
-            // the "+N" notice on the page we land on.
-            state: { essenceEarned: values.mood === 'Lucid' ? ESSENCE_LUCID_DREAM : 0 },
-          })
+          navigate(values.isPrivate ? '/journal' : backTo)
         }
       />
     </div>

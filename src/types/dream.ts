@@ -16,6 +16,11 @@ export interface DreamInput {
   isPrivate: boolean
   /** The night the dream happened, "YYYY-MM-DD" (see lib/dates). */
   dreamtOn: string
+  /**
+   * The dream's picture in the dream-images storage bucket ("<user id>/<file>"), or null.
+   * Left out (undefined) by writes that don't touch the picture.
+   */
+  imagePath?: string | null
 }
 
 export interface DreamPost extends DreamInput {

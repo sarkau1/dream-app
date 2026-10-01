@@ -9,6 +9,7 @@ import DreamFeed from './routes/dreams/DreamFeed'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import { DreamPostProvider } from './context/DreamPostContext'
+import { HabitsProvider } from './context/HabitsContext'
 
 // Home, the journal and the feed are where people land, so they ship in the main bundle. Every
 // other page is downloaded the first time it's opened, keeping the first load small on phones.
@@ -24,11 +25,13 @@ const DreamDetailPage = lazy(() => import('./routes/dreams/DreamDetailPage'))
 const DreamerPage = lazy(() => import('./routes/dreamers/DreamerPage'))
 const AdminPage = lazy(() => import('./routes/admin/AdminPage'))
 const HabitsPage = lazy(() => import('./routes/habits/HabitsPage'))
+const LucidGuidePage = lazy(() => import('./routes/guide/LucidGuidePage'))
 
 function App() {
   return (
     <AuthProvider>
       <DreamPostProvider>
+        <HabitsProvider>
         {/* BASE_URL is "/<repo-name>/" on GitHub Pages (see vite.config.ts) and "/" locally. */}
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <NavBar />
@@ -92,6 +95,7 @@ function App() {
                 }
               />
               <Route path="/web" element={<DreamWeb />} />
+              <Route path="/lucid" element={<LucidGuidePage />} />
               <Route
                 path="/profile"
                 element={
@@ -105,6 +109,7 @@ function App() {
             </Suspense>
           </PageShell>
         </BrowserRouter>
+        </HabitsProvider>
       </DreamPostProvider>
     </AuthProvider>
   )

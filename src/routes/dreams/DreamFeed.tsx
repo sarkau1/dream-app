@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import DreamCard from '../../components/DreamCard'
-import EssenceEarnedNotice from '../../components/EssenceEarnedNotice'
 import { useAuth } from '../../context/useAuth'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { primaryButtonClass } from '../../styles/ui'
@@ -55,7 +54,6 @@ export default function DreamFeed() {
 
       <FeedFilters filter={feedFilter} onChange={setFeedFilter} />
 
-      <EssenceEarnedNotice />
 
       {loading && <DreamCardSkeleton label="Loading dreams..." />}
       <FormError message={error} />

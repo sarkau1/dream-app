@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { Session, User } from '@supabase/auth-js'
 import { clearAllDrafts } from '../lib/drafts'
 import { friendlyError } from '../lib/errors'
+import { removeAllDreamImages } from '../lib/dreamImages'
 import { isSupabaseConfigured, NOT_CONFIGURED_ERROR, supabase } from '../lib/supabaseClient'
 import { MAX_DISPLAY_NAME_LENGTH } from '../types/dream'
 import { AuthContext, type AuthContextValue, type Profile } from './useAuth'
@@ -209,6 +210,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
     if (!userRef.current) return { error: 'You must be logged in to delete your account.' }
 
+    // Storage files don't go with the account, so the dream pictures are removed first.
+    await removeAllDreamImages(userRef.current.id)
     const { error } = await supabase.rpc('delete_own_account')
     if (error) return { error: friendlyError(error.message) }
 

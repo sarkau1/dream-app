@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEven
 import { useAuth } from '../context/useAuth'
 import { useDreamPosts } from '../context/useDreamPosts'
 import { appendDictation } from '../lib/dictation'
+import {
+  dreamImagePrompt,
+  prepareImage,
+  removeDreamImages,
+  uploadDreamImage,
+  useDreamImageUrl,
+} from '../lib/dreamImages'
 import { clearDraft, draftIsOutdated, loadDraft, saveDraft } from '../lib/drafts'
 import { todayLocal } from '../lib/dates'
 import { symbolsByFrequency } from '../lib/symbols'
@@ -38,6 +45,8 @@ interface DreamFormProps {
   onCancel?: () => void
 }
 
+// The picture isn't part of the autosaved draft (a file can't go in localStorage); it's handled
+// on its own and only uploaded when the dream is saved.
 function withDefaults(values?: Partial<DreamInput>): DreamInput {
   return {
     title: values?.title ?? '',
@@ -93,6 +102,15 @@ export default function DreamForm({
   const [dreamtOn, setDreamtOn] = useState(start.dreamtOn)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The picture: the one already saved, a newly picked one waiting to upload, or removed.
+  const [savedImagePath] = useState(() => initialValues?.imagePath ?? null)
+  const savedImageUrl = useDreamImageUrl(savedImagePath)
+  const [picked, setPicked] = useState<{ blob: Blob; previewUrl: string } | null>(null)
+  const [imageRemoved, setImageRemoved] = useState(false)
+  const [preparingImage, setPreparingImage] = useState(false)
+  const [promptCopied, setPromptCopied] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const userId = useAuth().user?.id ?? null
 
   // The user's past dream signs, most used first, minus the ones already on this dream. Reusing
   // the same words keeps the stats and the Dream Web from splitting one sign into several.
@@ -124,6 +142,43 @@ export default function DreamForm({
     setDreamtOn(initial.dreamtOn)
     setShowDraftNotice(false)
   }
+
+  // Free the preview's memory when it's replaced or the form closes.
+  useEffect(() => () => {
+    if (picked) URL.revokeObjectURL(picked.previewUrl)
+  }, [picked])
+
+  async function pickImage(file: File | undefined) {
+    if (!file) return
+    setPreparingImage(true)
+    setError(null)
+    const { blob, error } = await prepareImage(file)
+    setPreparingImage(false)
+    if (!blob) {
+      setError(error)
+      return
+    }
+    setPicked({ blob, previewUrl: URL.createObjectURL(blob) })
+    setImageRemoved(false)
+  }
+
+  function removeImage() {
+    setPicked(null)
+    setImageRemoved(true)
+  }
+
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(dreamImagePrompt({ title, body, mood, symbols }))
+      setPromptCopied(true)
+      window.setTimeout(() => setPromptCopied(false), 2500)
+    } catch {
+      setError('Couldn’t copy to the clipboard. Your browser may have blocked it.')
+    }
+  }
+
+  const imagePreview = picked?.previewUrl ?? (imageRemoved ? null : savedImageUrl)
+  const hasImage = picked !== null || (!imageRemoved && savedImagePath !== null)
 
   function addSymbol(raw: string = symbolInput) {
     // Lowercased so "Water" and "water" count as the same sign in the stats and the Dream Web.
@@ -160,20 +215,36 @@ export default function DreamForm({
 
     setSubmitting(true)
     setError(null)
+    // A new picture goes up first, so the dream is saved pointing at a file that exists.
+    let imagePath = imageRemoved ? null : savedImagePath
+    let uploaded: string | null = null
+    if (picked && userId) {
+      const result = await uploadDreamImage(userId, picked.blob)
+      if (result.error) {
+        setSubmitting(false)
+        setError(`The picture didn’t upload: ${result.error}`)
+        return
+      }
+      imagePath = uploaded = result.path
+    }
     const submitted = {
       ...values,
       title: title.trim(),
       body: body.trim(),
       isPrivate: isPrivate || suspension !== null,
+      imagePath,
     }
     const { error } = await onSubmit(submitted)
     setSubmitting(false)
 
     if (error) {
       // The draft is still saved, so nothing is lost if the user gives up and comes back later.
+      void removeDreamImages([uploaded])
       setError(error)
       return
     }
+    // The old picture was replaced or removed.
+    if (savedImagePath && savedImagePath !== imagePath) void removeDreamImages([savedImagePath])
     if (draftKey) clearDraft(draftKey)
     onSuccess(submitted)
   }
@@ -358,6 +429,60 @@ export default function DreamForm({
             ))}
           </div>
         )}
+      </div>
+
+      <div>
+        <p className={labelClass}>Picture</p>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            void pickImage(e.target.files?.[0])
+            e.target.value = ''
+          }}
+        />
+        {hasImage ? (
+          <div className="mt-2 overflow-hidden rounded-2xl border border-midnight-700 bg-midnight-900/60">
+            {imagePreview ? (
+              <img src={imagePreview} alt="The picture for this dream" className="max-h-80 w-full object-cover" />
+            ) : (
+              <div className="h-48 animate-pulse bg-midnight-800/60" aria-label="Loading picture" />
+            )}
+            <div className="flex gap-2 p-2">
+              <button type="button" onClick={() => imageInputRef.current?.click()} className={secondaryButtonClass}>
+                Replace
+              </button>
+              <button type="button" onClick={removeImage} className={secondaryButtonClass}>
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={preparingImage}
+            className="mt-2 flex min-h-28 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-midnight-600 text-sm text-moon-400 transition hover:border-nebula-400/60 hover:text-moon-100 disabled:opacity-60"
+          >
+            <span className="text-2xl" aria-hidden>🖼</span>
+            {preparingImage ? 'Preparing picture…' : 'Add a picture of this dream'}
+          </button>
+        )}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <button
+            type="button"
+            onClick={() => void copyPrompt()}
+            className="min-h-9 rounded-full border border-nebula-400/40 px-3.5 text-sm text-nebula-200 transition-colors hover:bg-nebula-500/10"
+          >
+            {promptCopied ? '✓ Prompt copied' : '✦ Copy image prompt'}
+          </button>
+          <span className="text-xs text-moon-500">
+            Paste it into ChatGPT or another image generator, save the picture and add it here. A
+            shared dream shares its picture too.
+          </span>
+        </div>
       </div>
 
       {/* A suspended user can't share; whatever they save stays private (the database agrees). */}

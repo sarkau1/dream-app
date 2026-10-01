@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { friendlyError } from '../lib/errors'
+import { removeDreamImages } from '../lib/dreamImages'
 import { isSupabaseConfigured, NOT_CONFIGURED_ERROR, supabase } from '../lib/supabaseClient'
 import { useAuth } from './useAuth'
 import { DreamPostContext, type DreamPostContextValue } from './useDreamPosts'
@@ -239,8 +240,15 @@ export function DreamPostProvider({ children }: { children: ReactNode }) {
       if (!isSupabaseConfigured) return { error: NOT_CONFIGURED_ERROR }
       if (!userId) return { error: 'You must be logged in to delete a dream.' }
 
-      const { error } = await supabase.from('dreams').delete().eq('id', id).eq('user_id', userId)
+      const { data, error } = await supabase
+        .from('dreams')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select('image_path')
       if (error) return { error: friendlyError(error.message) }
+      // The database can't delete storage files itself; the picture goes once its dream has.
+      void removeDreamImages((data ?? []).map((row) => row.image_path as string | null))
 
       setMyDreams((prev) => prev.filter((dream) => dream.id !== id))
       setDreams((prev) => prev.filter((dream) => dream.id !== id))

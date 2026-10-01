@@ -1,5 +1,6 @@
 import { AuthClient } from '@supabase/auth-js'
 import { PostgrestClient } from '@supabase/postgrest-js'
+import { StorageClient } from '@supabase/storage-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -18,7 +19,7 @@ if (!isSupabaseConfigured) {
   )
 }
 
-// We only use auth and the database, so instead of @supabase/supabase-js (which also bundles
+// We only use auth, the database and storage (dream images), so instead of @supabase/supabase-js (which also bundles
 // storage, realtime and functions clients) this wires the two sub-clients together the same
 // way supabase-js's createClient does.
 const url = new URL(supabaseUrl || 'https://placeholder.supabase.co')
@@ -48,9 +49,12 @@ async function fetchWithAuth(input: RequestInfo | URL, init?: RequestInit) {
 }
 
 const rest = new PostgrestClient(new URL('rest/v1', url).href, { fetch: fetchWithAuth })
+// Same JWT as the database, so the storage policies in schema.sql see the signed-in user.
+const storage = new StorageClient(new URL('storage/v1', url).href, {}, fetchWithAuth)
 
 export const supabase = {
   auth,
   from: (table: string) => rest.from(table),
   rpc: (fn: string, args?: Record<string, unknown>) => rest.rpc(fn, args),
+  storage,
 }
