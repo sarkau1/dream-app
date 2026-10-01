@@ -1,4 +1,4 @@
-# Lucent Dreaming
+# Dusk & Dawn
 
 A dream journaling site. Register, keep a journal of your dreams (private by default), and
 share the ones you choose to a community feed. Tag the symbols you notice and the Dream Web

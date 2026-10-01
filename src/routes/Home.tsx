@@ -102,18 +102,13 @@ export default function Home() {
 
   return (
     <div className="space-y-16">
-      <section className="mx-auto max-w-2xl space-y-5 text-center">
-        <h1 className="text-4xl font-semibold text-moon-100 sm:text-5xl">
-          One month to live your{' '}
-          <span className="bg-gradient-to-r from-nebula-300 to-aurora-300 bg-clip-text text-transparent">
+      <section className="mx-auto max-w-2xl text-center">
+        <h1 className="font-serif text-5xl text-moon-100 sm:text-6xl">
+          Live your{' '}
+          <span className="bg-gradient-to-r from-amber-200 via-nebula-300 to-aurora-300 bg-clip-text text-transparent italic">
             best life
           </span>
-          .
         </h1>
-        <p className="text-lg text-moon-300">
-          Balance your waking and sleeping life, every day, for thirty days. Complete all your habits
-          for the day to earn <span className="text-aurora-300">✦10 Dream Essence</span>.
-        </p>
       </section>
 
       {/* The yin-yang, then the two halves described under it. Each half's label sits in its head

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import Avatar from '../components/Avatar'
+import LogoMark from '../components/Logo'
 import { useAuth } from '../context/useAuth'
 import { useHabits } from '../context/useHabits'
 import { todayLocal } from '../lib/dates'
 import { ESSENCE_PERFECT_DAY, essenceFromHabits } from '../lib/essence'
-import { primaryButtonClass, secondaryButtonClass } from '../styles/ui'
+import { primaryButtonClass } from '../styles/ui'
 
 // Dreams (the feed), Dream Web and Progress are hidden for now; their pages still work by URL.
 const links = [
@@ -20,8 +21,13 @@ const ADMIN_LINK = { to: '/admin', label: 'Admin', end: false }
 const linkColors = (isActive: boolean) =>
   isActive ? 'bg-nebula-500/20 text-nebula-300' : 'text-moon-300 hover:text-moon-100'
 
+// Wide screens: the links sit together in one pill; the current page is a raised pill inside it.
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `block rounded-full px-4 py-2 text-sm transition-colors ${linkColors(isActive)}`
+  `block rounded-full px-4 py-1.5 text-sm transition-all ${
+    isActive
+      ? 'bg-gradient-to-b from-midnight-600 to-midnight-700 text-moon-100 shadow-[0_2px_12px_-2px_rgba(124,92,255,0.45)]'
+      : 'text-moon-400 hover:text-moon-100'
+  }`
 
 // Bigger rows in the phone menu, so each one is an easy thumb target.
 const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -75,7 +81,7 @@ export default function NavBar() {
       </NavLink>
       <button
         onClick={handleSignOut}
-        className={secondaryButtonClass}
+        className="min-h-11 rounded-full px-3 text-sm text-moon-500 transition-colors hover:text-moon-100"
       >
         Log out
       </button>
@@ -100,20 +106,22 @@ export default function NavBar() {
   )
 
   return (
-    <header className="sticky top-0 z-20 border-b border-midnight-700/60 bg-midnight-950/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-      <nav className="mx-auto max-w-5xl px-4 py-3 sm:px-6 sm:py-4">
+    // The bottom edge is a hairline that glows from dawn to dusk, like the logo.
+    <header className="sticky top-0 z-20 bg-midnight-950/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-nebula-400/40 after:to-transparent">
+      <nav className="mx-auto max-w-5xl px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-3">
-          <NavLink
-            to="/"
-            onClick={closeMenu}
-            className="text-lg font-semibold tracking-wide text-moon-100"
-          >
-            <span className="text-nebula-400">Lucent</span> Dreaming
+          <NavLink to="/" onClick={closeMenu} className="group flex items-center gap-2.5" aria-label="Dusk & Dawn, home">
+            <LogoMark className="size-9 drop-shadow-[0_0_10px_rgba(155,127,255,0.45)] transition-transform duration-700 group-hover:rotate-180" />
+            <span className="font-serif text-xl tracking-wide text-moon-100">
+              Dusk{' '}
+              <span className="bg-gradient-to-r from-amber-200 to-nebula-300 bg-clip-text text-transparent italic">&amp;</span>{' '}
+              Dawn
+            </span>
           </NavLink>
 
-          {/* Wide screens: everything in one row (from lg: with six links it doesn’t fit on tablets). */}
-          <div className="hidden items-center gap-3 lg:flex">
-            <ul className="flex items-center gap-1">
+          {/* Wide screens: everything in one row. */}
+          <div className="hidden items-center gap-3 md:flex">
+            <ul className="flex items-center gap-1 rounded-full border border-midnight-700/70 bg-midnight-900/60 p-1">
               {visibleLinks.map((link) => (
                 <li key={link.to}>
                   <NavLink to={link.to} end={link.end} className={linkClass}>
@@ -133,7 +141,7 @@ export default function NavBar() {
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-midnight-700 text-moon-300 hover:text-moon-100 lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-midnight-700 text-moon-300 hover:text-moon-100 md:hidden"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -142,7 +150,7 @@ export default function NavBar() {
         </div>
 
         {menuOpen && (
-          <div id="mobile-menu" className="mt-3 space-y-4 pb-2 lg:hidden">
+          <div id="mobile-menu" className="rise-in mt-3 space-y-4 pb-2 md:hidden">
             <ul className="space-y-1">
               {visibleLinks.map((link) => (
                 <li key={link.to}>

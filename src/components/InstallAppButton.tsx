@@ -16,7 +16,7 @@ const STEPS = {
   desktop: [
     'Open this site in Chrome or Edge.',
     'Click the install icon at the right end of the address bar,',
-    'or open the ⋮ / … menu and choose “Install Lucent Dreaming”.',
+    'or open the ⋮ / … menu and choose “Install Dusk & Dawn”.',
   ],
 }
 

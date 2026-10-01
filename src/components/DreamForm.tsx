@@ -104,8 +104,8 @@ export default function DreamForm({
   const [error, setError] = useState<string | null>(null)
   // The picture: the one already saved, a newly picked one waiting to upload, or removed.
   const [savedImagePath] = useState(() => initialValues?.imagePath ?? null)
-  const savedImageUrl = useDreamImageUrl(savedImagePath)
-  const [picked, setPicked] = useState<{ blob: Blob; previewUrl: string } | null>(null)
+  const { url: savedImageUrl, reload: reloadSavedImage } = useDreamImageUrl(savedImagePath)
+  const [picked, setPicked] = useState<{ blob: Blob; thumb: Blob | null; previewUrl: string } | null>(null)
   const [imageRemoved, setImageRemoved] = useState(false)
   const [preparingImage, setPreparingImage] = useState(false)
   const [promptCopied, setPromptCopied] = useState(false)
@@ -152,13 +152,13 @@ export default function DreamForm({
     if (!file) return
     setPreparingImage(true)
     setError(null)
-    const { blob, error } = await prepareImage(file)
+    const { blob, thumb, error } = await prepareImage(file)
     setPreparingImage(false)
     if (!blob) {
       setError(error)
       return
     }
-    setPicked({ blob, previewUrl: URL.createObjectURL(blob) })
+    setPicked({ blob, thumb, previewUrl: URL.createObjectURL(blob) })
     setImageRemoved(false)
   }
 
@@ -219,7 +219,7 @@ export default function DreamForm({
     let imagePath = imageRemoved ? null : savedImagePath
     let uploaded: string | null = null
     if (picked && userId) {
-      const result = await uploadDreamImage(userId, picked.blob)
+      const result = await uploadDreamImage(userId, picked.blob, picked.thumb)
       if (result.error) {
         setSubmitting(false)
         setError(`The picture didn’t upload: ${result.error}`)
@@ -446,7 +446,12 @@ export default function DreamForm({
         {hasImage ? (
           <div className="mt-2 overflow-hidden rounded-2xl border border-midnight-700 bg-midnight-900/60">
             {imagePreview ? (
-              <img src={imagePreview} alt="The picture for this dream" className="max-h-80 w-full object-cover" />
+              <img
+                src={imagePreview}
+                alt="The picture for this dream"
+                onError={picked ? undefined : reloadSavedImage}
+                className="max-h-80 w-full object-cover"
+              />
             ) : (
               <div className="h-48 animate-pulse bg-midnight-800/60" aria-label="Loading picture" />
             )}

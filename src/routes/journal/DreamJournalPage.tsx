@@ -107,8 +107,11 @@ export default function DreamJournalPage() {
     return [...groups]
   }, [matches, visibleCount])
 
-  // Signed once for every picture on screen, rather than one request per card.
-  const imageUrls = useDreamImageUrls(monthGroups.flatMap(([, dreams]) => dreams.map((d) => d.imagePath)))
+  // Thumbnails, signed once for every picture on screen rather than one request per card.
+  const { urls: imageUrls, reload: reloadImage } = useDreamImageUrls(
+    monthGroups.flatMap(([, dreams]) => dreams.map((d) => d.imagePath)),
+    { thumbnails: true },
+  )
 
   const filterClass = (value: JournalFilter) =>
     `min-h-9 flex-1 rounded-full px-4 text-sm transition-colors sm:flex-none ${
@@ -211,6 +214,9 @@ export default function DreamJournalPage() {
                   key={dream.id}
                   dream={dream}
                   imageUrl={dream.imagePath ? imageUrls.get(dream.imagePath) : null}
+                  onImageError={() => {
+                    if (dream.imagePath) reloadImage(dream.imagePath)
+                  }}
                 />
               ))}
             </ul>

@@ -1,10 +1,10 @@
-// Lucent Dreaming service worker: makes the site installable as an app, keeps the built files on
+// Dusk & Dawn service worker: makes the site installable as an app, keeps the built files on
 // the phone so it opens fast, and shows offline.html when there's no connection.
 //
 // Pages always come from the network first, so every deploy reaches users on their next open;
 // nothing here needs changing when the app changes. Bump VERSION only when this file's own
 // logic changes: the browser installs the new worker and activate() clears the old caches.
-const VERSION = 'v1'
+const VERSION = 'v2'
 const SHELL_CACHE = `shell-${VERSION}`
 const ASSET_CACHE = `assets-${VERSION}`
 // Built files are named by content hash, so each deploy adds new ones; keep the newest few.

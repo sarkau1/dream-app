@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { FadeInImage } from '../../components/DreamImage'
 import { formatDreamDate, weekdayIndex } from '../../lib/dates'
 import type { DreamMood, DreamSummary } from '../../types/dream'
 
@@ -36,7 +37,16 @@ function Privacy({ dream }: { dream: DreamSummary }) {
 }
 
 /** A dream on the journal's timeline: the date in the margin, the entry beside it. */
-export default function JournalEntry({ dream, imageUrl }: { dream: DreamSummary; imageUrl?: string | null }) {
+export default function JournalEntry({
+  dream,
+  imageUrl,
+  onImageError,
+}: {
+  dream: DreamSummary
+  imageUrl?: string | null
+  /** Called when the picture fails to load, so its link can be signed again. */
+  onImageError?: () => void
+}) {
   const mood = dream.mood ? MOOD_COLORS[dream.mood] : null
   return (
     <li className="group relative grid grid-cols-[3.25rem_1fr] gap-4 sm:grid-cols-[4rem_1fr] sm:gap-6">
@@ -97,18 +107,13 @@ export default function JournalEntry({ dream, imageUrl }: { dream: DreamSummary;
           </div>
           {/* The picture, once its link is signed; a placeholder keeps the card from jumping. */}
           {dream.imagePath && (
-            <div className="mt-2 size-20 shrink-0 overflow-hidden rounded-xl border border-midnight-700/60 bg-midnight-800/60 sm:size-28">
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt=""
-                  loading="lazy"
-                  className="size-full object-cover transition duration-500 group-hover:scale-105"
-                />
-              ) : (
-                <div className="size-full animate-pulse" />
-              )}
-            </div>
+            <FadeInImage
+              src={imageUrl ?? null}
+              alt=""
+              lazy
+              onError={onImageError}
+              className="mt-2 size-20 shrink-0 rounded-xl border border-midnight-700/60 sm:size-28"
+            />
           )}
         </div>
       </article>

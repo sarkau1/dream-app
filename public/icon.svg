@@ -1,33 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Lucent Dreaming app icon. Full-bleed so Android can crop it to any shape ("maskable");
-       everything that matters stays inside the central safe circle (radius 40%). -->
+  <!-- Dusk & Dawn app icon: the waking (dawn) and sleeping (dusk) halves as one turning disc, like
+       the home page. Full-bleed so Android can crop it to any shape ("maskable"); everything that
+       matters stays inside the central safe circle (radius 40%). -->
   <defs>
-    <radialGradient id="sky" cx="50%" cy="42%" r="72%">
+    <radialGradient id="sky" cx="50%" cy="45%" r="72%">
       <stop offset="0" stop-color="#292361"/>
       <stop offset="0.55" stop-color="#14122f"/>
       <stop offset="1" stop-color="#05040f"/>
     </radialGradient>
-    <linearGradient id="moon" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f4f2fd"/>
-      <stop offset="1" stop-color="#bda8ff"/>
+    <linearGradient id="dawn" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7e0"/>
+      <stop offset="0.6" stop-color="#ffd28a"/>
+      <stop offset="1" stop-color="#ff9e7a"/>
     </linearGradient>
-    <mask id="crescent">
-      <rect width="512" height="512" fill="#000"/>
-      <circle cx="238" cy="266" r="138" fill="#fff"/>
-      <circle cx="302" cy="222" r="118" fill="#000"/>
-    </mask>
+    <linearGradient id="dusk" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c5cff"/>
+      <stop offset="1" stop-color="#1d1a45"/>
+    </linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="22"/>
+      <feGaussianBlur stdDeviation="20"/>
     </filter>
   </defs>
   <rect width="512" height="512" fill="url(#sky)"/>
-  <g filter="url(#glow)" opacity="0.7">
-    <rect width="512" height="512" fill="#7c5cff" mask="url(#crescent)"/>
+  <circle cx="256" cy="256" r="150" fill="#9b7fff" opacity="0.55" filter="url(#glow)"/>
+  <!-- The disc: radius 150, turned a little so it reads as motion. -->
+  <g transform="translate(256 256) rotate(-30) scale(3.125)">
+    <path d="M0,-48 A48,48 0 0 1 0,48 A24,24 0 0 1 0,0 A24,24 0 0 0 0,-48 Z" fill="url(#dawn)"/>
+    <path d="M0,-48 A48,48 0 0 1 0,48 A24,24 0 0 1 0,0 A24,24 0 0 0 0,-48 Z" fill="url(#dusk)" transform="rotate(180)"/>
+    <circle cy="24" r="7" fill="#1d1a45"/>
+    <circle cy="-24" r="7" fill="#ffe7b0"/>
+    <circle r="48" fill="none" stroke="#d9ccff" stroke-opacity="0.45" stroke-width="1"/>
   </g>
-  <rect width="512" height="512" fill="url(#moon)" mask="url(#crescent)"/>
-  <circle cx="330" cy="190" r="10" fill="#8ff2da"/>
-  <circle cx="366" cy="264" r="5.5" fill="#f4f2fd"/>
-  <circle cx="300" cy="300" r="4" fill="#bdf7e9"/>
-  <circle cx="150" cy="138" r="4" fill="#d9ccff" opacity="0.8"/>
-  <circle cx="392" cy="326" r="3.5" fill="#d9ccff" opacity="0.7"/>
+  <circle cx="132" cy="140" r="4" fill="#d9ccff" opacity="0.8"/>
+  <circle cx="390" cy="118" r="5" fill="#8ff2da"/>
+  <circle cx="396" cy="380" r="3.5" fill="#d9ccff" opacity="0.7"/>
 </svg>
