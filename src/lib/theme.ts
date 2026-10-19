@@ -5,7 +5,9 @@
 
 export type Theme = 'dusk' | 'dawn'
 
-const THEME_KEY = 'dreamapp:theme'
+// v2: choices saved while the default still followed the device were dropped, so everyone
+// starts again in Dusk. Keep index.html's copy of this key in step.
+const THEME_KEY = 'dreamapp:theme-v2'
 
 // The browser bar colour on phones: each theme's page background.
 const BAR_COLORS: Record<Theme, string> = { dusk: '#05040f', dawn: '#fbf6ee' }

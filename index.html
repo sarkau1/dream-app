@@ -15,7 +15,7 @@
     <script>
       try {
         // Dusk (dark) unless Dawn was picked: the site is mostly used at night and first thing.
-        var theme = localStorage.getItem('dreamapp:theme') === 'dawn' ? 'dawn' : 'dusk'
+        var theme = localStorage.getItem('dreamapp:theme-v2') === 'dawn' ? 'dawn' : 'dusk'
         document.documentElement.dataset.theme = theme
         if (theme === 'dawn') {
           document.querySelector('meta[name="theme-color"]').setAttribute('content', '#fbf6ee')
