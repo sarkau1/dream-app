@@ -14,10 +14,8 @@
     <!-- Dusk (dark) or Dawn (light), set before the first paint to avoid a flash. See src/lib/theme.ts. -->
     <script>
       try {
-        var theme = localStorage.getItem('dreamapp:theme')
-        if (theme !== 'dusk' && theme !== 'dawn') {
-          theme = matchMedia('(prefers-color-scheme: light)').matches ? 'dawn' : 'dusk'
-        }
+        // Dusk (dark) unless Dawn was picked: the site is mostly used at night and first thing.
+        var theme = localStorage.getItem('dreamapp:theme') === 'dawn' ? 'dawn' : 'dusk'
         document.documentElement.dataset.theme = theme
         if (theme === 'dawn') {
           document.querySelector('meta[name="theme-color"]').setAttribute('content', '#fbf6ee')

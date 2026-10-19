@@ -1,7 +1,7 @@
 // The two looks of the site: Dusk (dark) and Dawn (light). Clicking the name in the header
-// switches between them. The choice is remembered per device; until one is made, the device's
-// own light/dark setting decides. index.html applies it before the first paint, so there's no
-// flash of the wrong theme.
+// switches between them. The choice is remembered per device; until one is made it's Dusk, even
+// on a device set to light mode, so the site never glares at night. index.html applies it
+// before the first paint, so there's no flash of the wrong theme.
 
 export type Theme = 'dusk' | 'dawn'
 
