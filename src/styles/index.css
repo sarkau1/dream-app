@@ -19,6 +19,37 @@
   --color-moon-500: #8f89b3;
 }
 
+/* Dawn, the light theme: the same colour names with daylight values. Backgrounds (midnight) turn
+   to cream and lavender, text (moon) to ink, and the accents darken enough to read on white. */
+html[data-theme='dawn'] {
+  color-scheme: light;
+  --color-midnight-950: #fbf6ee;
+  --color-midnight-900: #ffffff;
+  --color-midnight-800: #f3ecf9;
+  --color-midnight-700: #e4dcf0;
+  --color-midnight-600: #cfc3e6;
+  --color-nebula-500: #6d4cf0;
+  --color-nebula-400: #7c5cff;
+  --color-nebula-300: #5b3fd9;
+  --color-nebula-200: #4a30bf;
+  --color-aurora-400: #1fbf9c;
+  --color-aurora-300: #0e8c72;
+  --color-aurora-200: #0b7360;
+  --color-moon-100: #1e1a3a;
+  --color-moon-300: #3f3866;
+  --color-moon-400: #565080;
+  --color-moon-500: #6b6592;
+  /* Tailwind's pale text colours, darkened to read on light backgrounds. */
+  --color-amber-100: #92400e;
+  --color-amber-200: #a1560b;
+  --color-amber-300: #b45309;
+  --color-rose-200: #be123c;
+  --color-rose-300: #e11d48;
+  --color-rose-400: #e11d48;
+  --color-sky-200: #0369a1;
+  --color-sky-300: #0ea5e9;
+}
+
 html {
   color-scheme: dark;
   /* Stop phones from inflating text in landscape. */
@@ -44,6 +75,14 @@ body {
     radial-gradient(circle at 85% 0%, rgba(94, 230, 200, 0.12), transparent 35%),
     radial-gradient(circle at 50% 100%, rgba(124, 92, 255, 0.1), transparent 45%);
   color: var(--color-moon-100);
+}
+
+/* Dawn's sky: a peach sunrise low on one side, a lavender haze on the other. */
+html[data-theme='dawn'] body {
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(255, 196, 140, 0.35), transparent 45%),
+    radial-gradient(circle at 85% 0%, rgba(124, 92, 255, 0.12), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(94, 230, 200, 0.12), transparent 45%);
 }
 
 /* One visible focus style for keyboard users everywhere. Fields have their own ring instead. */

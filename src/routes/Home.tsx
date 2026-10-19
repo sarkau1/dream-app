@@ -67,13 +67,13 @@ function HeadLabel({ side, top, onHover }: { side: Side; top: string; onHover: (
       >
         <span
           className={`flex size-9 items-center justify-center rounded-full text-lg ${
-            wake ? 'bg-midnight-800 text-amber-200' : 'bg-amber-100 text-midnight-800'
+            wake ? 'bg-[#14122f] text-[#fde68a]' : 'bg-[#fef3c7] text-[#14122f]'
           }`}
           aria-hidden="true"
         >
           {s.icon}
         </span>
-        <span className={`text-xs font-semibold tracking-widest whitespace-nowrap uppercase ${wake ? 'text-midnight-800' : 'text-amber-100'}`}>
+        <span className={`text-xs font-semibold tracking-widest whitespace-nowrap uppercase ${wake ? 'text-[#14122f]' : 'text-[#fef3c7]'}`}>
           {s.title}
         </span>
       </Link>
@@ -123,8 +123,9 @@ export default function Home() {
                   <stop offset="100%" stopColor="#ffd28a" />
                 </linearGradient>
                 <linearGradient id="yy-sleep" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="var(--color-midnight-600)" />
-                  <stop offset="100%" stopColor="var(--color-midnight-950)" />
+                  {/* Fixed night colours: this half stays dark in the Dawn theme too. */}
+                  <stop offset="0%" stopColor="#292361" />
+                  <stop offset="100%" stopColor="#05040f" />
                 </linearGradient>
               </defs>
               {half('wake', 'yy-wake', 'url(#yy-wake)')}

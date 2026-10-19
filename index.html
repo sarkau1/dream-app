@@ -11,6 +11,19 @@
     <meta name="theme-color" content="#05040f" />
     <meta name="description" content="Balance your waking and sleeping life: keep your habits, practise all-day awareness and write down your dreams." />
     <title>Dusk &amp; Dawn</title>
+    <!-- Dusk (dark) or Dawn (light), set before the first paint to avoid a flash. See src/lib/theme.ts. -->
+    <script>
+      try {
+        var theme = localStorage.getItem('dreamapp:theme')
+        if (theme !== 'dusk' && theme !== 'dawn') {
+          theme = matchMedia('(prefers-color-scheme: light)').matches ? 'dawn' : 'dusk'
+        }
+        document.documentElement.dataset.theme = theme
+        if (theme === 'dawn') {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#fbf6ee')
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

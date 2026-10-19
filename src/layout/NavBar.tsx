@@ -6,18 +6,19 @@ import { useAuth } from '../context/useAuth'
 import { useHabits } from '../context/useHabits'
 import { todayLocal } from '../lib/dates'
 import { ESSENCE_PERFECT_DAY, essenceFromHabits } from '../lib/essence'
+import { currentTheme, setTheme, type Theme } from '../lib/theme'
 import { primaryButtonClass } from '../styles/ui'
 
 // Dreams (the feed), Dream Web and Progress are hidden for now; their pages still work by URL.
+// Home has no link of its own: the logo goes there.
 // Dusk is the evening side (habits and the diary), Dawn the morning side (the dream journal).
 const links = [
-  { to: '/', label: 'Home', end: true },
   { to: '/habits', label: 'Dusk' },
   { to: '/journal', label: 'Dawn' },
 ]
 
 // Only admins see it; the page and the database check too.
-const ADMIN_LINK = { to: '/admin', label: 'Admin', end: false }
+const ADMIN_LINK = { to: '/admin', label: 'Admin' }
 
 const linkColors = (isActive: boolean) =>
   isActive ? 'bg-nebula-500/20 text-nebula-300' : 'text-moon-300 hover:text-moon-100'
@@ -44,6 +45,17 @@ export default function NavBar() {
   const [menuOpenOn, setMenuOpenOn] = useState<string | null>(null)
   const menuOpen = menuOpenOn === location.pathname
   const closeMenu = () => setMenuOpenOn(null)
+  // index.html has already applied the saved theme; this keeps the header in step with it.
+  const [theme, setThemeState] = useState<Theme>(currentTheme)
+
+  function toggleTheme() {
+    const next = theme === 'dusk' ? 'dawn' : 'dusk'
+    setTheme(next)
+    setThemeState(next)
+  }
+
+  // The word for the current theme is lit, the other one rests.
+  const word = (name: Theme) => (theme === name ? 'text-moon-100' : 'text-moon-500')
 
   async function handleSignOut() {
     closeMenu()
@@ -111,21 +123,35 @@ export default function NavBar() {
     <header className="sticky top-0 z-20 bg-midnight-950/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-nebula-400/40 after:to-transparent">
       <nav className="mx-auto max-w-5xl px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-3">
-          <NavLink to="/" onClick={closeMenu} className="group flex items-center gap-2.5" aria-label="Dusk & Dawn, home">
-            <LogoMark className="size-9 drop-shadow-[0_0_10px_rgba(155,127,255,0.45)] transition-transform duration-700 group-hover:rotate-180" />
-            <span className="font-serif text-xl tracking-wide text-moon-100">
-              Dusk{' '}
+          <div className="flex items-center gap-2.5">
+            {/* The mark goes home and turns its dawn half to the top in the Dawn theme. */}
+            <NavLink to="/" onClick={closeMenu} aria-label="Dusk & Dawn, home">
+              <LogoMark
+                className={`size-9 drop-shadow-[0_0_10px_rgba(155,127,255,0.45)] transition-transform duration-700 ${
+                  theme === 'dawn' ? 'rotate-180' : ''
+                }`}
+              />
+            </NavLink>
+            {/* The name switches between the Dusk (dark) and Dawn (light) themes. */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dusk' ? 'Switch to the Dawn (light) theme' : 'Switch to the Dusk (dark) theme'}
+              title={theme === 'dusk' ? 'Switch to Dawn' : 'Switch to Dusk'}
+              className="rounded-full font-serif text-xl tracking-wide"
+            >
+              <span className={`transition-colors duration-500 ${word('dusk')}`}>Dusk</span>{' '}
               <span className="bg-gradient-to-r from-amber-200 to-nebula-300 bg-clip-text text-transparent italic">&amp;</span>{' '}
-              Dawn
-            </span>
-          </NavLink>
+              <span className={`transition-colors duration-500 ${word('dawn')}`}>Dawn</span>
+            </button>
+          </div>
 
           {/* Wide screens: everything in one row. */}
           <div className="hidden items-center gap-3 md:flex">
             <ul className="flex items-center gap-1 rounded-full border border-midnight-700/70 bg-midnight-900/60 p-1">
               {visibleLinks.map((link) => (
                 <li key={link.to}>
-                  <NavLink to={link.to} end={link.end} className={linkClass}>
+                  <NavLink to={link.to} className={linkClass}>
                     {link.label}
                   </NavLink>
                 </li>
@@ -155,7 +181,7 @@ export default function NavBar() {
             <ul className="space-y-1">
               {visibleLinks.map((link) => (
                 <li key={link.to}>
-                  <NavLink to={link.to} end={link.end} onClick={closeMenu} className={mobileLinkClass}>
+                  <NavLink to={link.to} onClick={closeMenu} className={mobileLinkClass}>
                     {link.label}
                   </NavLink>
                 </li>
