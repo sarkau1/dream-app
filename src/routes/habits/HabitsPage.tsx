@@ -18,14 +18,16 @@ import {
   type HabitInput,
 } from '../../lib/habitsApi'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
+import DiaryTab from './DiaryTab'
 import MirrorTab from './MirrorTab'
 import TodayTab from './TodayTab'
 
-type Tab = 'today' | 'mirror'
+type Tab = 'today' | 'mirror' | 'diary'
 
 const TABS: { value: Tab; label: string; icon: string }[] = [
   { value: 'today', label: 'Today', icon: '✓' },
   { value: 'mirror', label: 'Mirror', icon: '🪞' },
+  { value: 'diary', label: 'Diary', icon: '✎' },
 ]
 
 function withCheck(checks: HabitChecks, habitId: string, day: string, done: boolean): HabitChecks {
@@ -38,15 +40,17 @@ function withCheck(checks: HabitChecks, habitId: string, day: string, done: bool
 }
 
 /**
- * Habits: tick them off on Today, see the honest numbers in the Mirror. Private to the user,
- * like their journal. Built phone-first: big rows, a tab bar at the bottom of the screen.
+ * Dusk: tick habits off on Today, see the honest numbers in the Mirror, and write in the Diary.
+ * Private to the user, like their journal. Built phone-first: big rows, a tab bar at the bottom
+ * of the screen.
  */
 export default function HabitsPage() {
-  useDocumentTitle('Habits')
+  useDocumentTitle('Dusk')
   const { user } = useAuth()
   const userId = user?.id ?? null
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab: Tab = searchParams.get('tab') === 'mirror' ? 'mirror' : 'today'
+  const tabParam = searchParams.get('tab')
+  const tab: Tab = tabParam === 'mirror' || tabParam === 'diary' ? tabParam : 'today'
   // Loaded once for the whole app (see HabitsProvider): the nav bar's Dream Essence needs them too.
   const { habits, checks, error, setHabits, setChecks, setError } = useHabits()
   // Bumped each time a tick completes the day, to replay the "+10" pop.
@@ -160,11 +164,11 @@ export default function HabitsPage() {
     <div className="mx-auto max-w-xl space-y-6 pb-24 md:pb-0">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-moon-100">Habits</h1>
-          <p className="mt-1 text-sm text-moon-400">Promises to yourself, and an honest mirror.</p>
+          <h1 className="text-3xl font-semibold text-moon-100">Dusk</h1>
+          <p className="mt-1 text-sm text-moon-400">Promises to yourself, an honest mirror, and a diary.</p>
         </div>
         {/* Wider screens: tabs up here. Phones get the bar at the bottom. */}
-        <div role="tablist" aria-label="Habits view" className="hidden rounded-full border border-midnight-700 bg-midnight-900/70 p-1 md:flex">
+        <div role="tablist" aria-label="Dusk view" className="hidden rounded-full border border-midnight-700 bg-midnight-900/70 p-1 md:flex">
           {TABS.map((t) => (
             <button
               key={t.value}
@@ -191,7 +195,10 @@ export default function HabitsPage() {
         </div>
       )}
 
-      {shown === null ? (
+      {/* The diary doesn't need the habits, so it never waits for them. */}
+      {tab === 'diary' ? (
+        <DiaryTab />
+      ) : shown === null ? (
         <div className="space-y-3" aria-label="Loading habits">
           <div className="h-44 animate-pulse rounded-3xl bg-midnight-900/70" />
           <div className="h-16 animate-pulse rounded-2xl bg-midnight-900/70" />
@@ -224,7 +231,7 @@ export default function HabitsPage() {
 
       <nav
         role="tablist"
-        aria-label="Habits view"
+        aria-label="Dusk view"
         className="fixed inset-x-0 bottom-0 z-20 border-t border-midnight-700/70 bg-midnight-950/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
       >
         <div className="mx-auto flex max-w-xl">

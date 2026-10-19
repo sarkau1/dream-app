@@ -9,10 +9,11 @@ import { ESSENCE_PERFECT_DAY, essenceFromHabits } from '../lib/essence'
 import { primaryButtonClass } from '../styles/ui'
 
 // Dreams (the feed), Dream Web and Progress are hidden for now; their pages still work by URL.
+// Dusk is the evening side (habits and the diary), Dawn the morning side (the dream journal).
 const links = [
   { to: '/', label: 'Home', end: true },
-  { to: '/habits', label: 'Habits' },
-  { to: '/journal', label: 'Journal' },
+  { to: '/habits', label: 'Dusk' },
+  { to: '/journal', label: 'Dawn' },
 ]
 
 // Only admins see it; the page and the database check too.

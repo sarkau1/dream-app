@@ -53,7 +53,7 @@ describe('progressFromDreams', () => {
     expect(p.calendar).toHaveLength(CALENDAR_WEEKS)
     const thisWeek = p.calendar[CALENDAR_WEEKS - 1]
     expect(thisWeek[0].day).toBe('2026-09-28')
-    expect(thisWeek[2]).toEqual({ day: TODAY, dreams: 1, lucid: true, future: false })
+    expect(thisWeek[2]).toEqual({ day: TODAY, dreams: 1, lucid: true, blank: false, future: false })
     expect(thisWeek[3].future).toBe(true)
   })
 
@@ -75,5 +75,15 @@ describe('progressFromDreams', () => {
     expect(byId['first-lucid'].value).toBe(1)
     expect(byId['week-streak'].value).toBe(2)
     expect(p.moods.find((m) => m.mood === null)?.count).toBe(1)
+  })
+
+  it('marks blank nights on the calendar without counting them as recall', () => {
+    const p = progressFromDreams([dream('2026-09-28')], TODAY, new Set(['2026-09-28', '2026-09-29']))
+    const thisWeek = p.calendar[CALENDAR_WEEKS - 1]
+    // A dream that night wins over the blank mark.
+    expect(thisWeek[0].blank).toBe(false)
+    expect(thisWeek[1]).toMatchObject({ dreams: 0, blank: true })
+    expect(p.currentStreak).toBe(0)
+    expect(p.nights).toBe(1)
   })
 })

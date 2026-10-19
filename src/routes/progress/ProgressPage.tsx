@@ -5,6 +5,7 @@ import { FormError } from '../../components/TextField'
 import { useDreamPosts } from '../../context/useDreamPosts'
 import { formatDreamDate, todayLocal } from '../../lib/dates'
 import { CALENDAR_WEEKS, progressFromDreams, type CalendarDay, type Milestone } from '../../lib/progress'
+import { useBlankNights } from '../../lib/blankNights'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { cardClass, primaryButtonClass } from '../../styles/ui'
 
@@ -35,11 +36,13 @@ function dayClass(day: CalendarDay) {
   if (day.lucid) return 'bg-aurora-400'
   if (day.dreams >= 2) return 'bg-nebula-400'
   if (day.dreams === 1) return 'bg-nebula-500/50'
+  if (day.blank) return 'border border-moon-500/60 bg-midnight-800'
   return 'bg-midnight-800'
 }
 
 function dayTitle(day: CalendarDay) {
   const date = formatDreamDate(day.day)
+  if (day.blank) return `${date}: nothing recalled`
   if (day.dreams === 0) return `${date}: no dreams`
   const lucid = day.lucid ? ', lucid' : ''
   return `${date}: ${day.dreams} dream${day.dreams === 1 ? '' : 's'}${lucid}`
@@ -76,6 +79,9 @@ function RecallCalendar({ weeks, nights }: { weeks: CalendarDay[][]; nights: num
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-moon-400">
         <span className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-[3px] bg-midnight-800" /> None
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-[3px] border border-moon-500/60 bg-midnight-800" /> Nothing recalled
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-[3px] bg-nebula-500/50" /> 1 dream
@@ -171,7 +177,11 @@ function streakHint(current: number, loggedToday: boolean) {
 export default function ProgressPage() {
   useDocumentTitle('Progress')
   const { myDreams, loadingMyDreams, myDreamsError } = useDreamPosts()
-  const progress = useMemo(() => progressFromDreams(myDreams, todayLocal()), [myDreams])
+  const { nights: blankNights } = useBlankNights()
+  const progress = useMemo(
+    () => progressFromDreams(myDreams, todayLocal(), blankNights),
+    [myDreams, blankNights],
+  )
 
   let content
   if (myDreamsError) {

@@ -58,6 +58,19 @@ clear warning). Tap a habit's emoji to edit, stop or delete it, and use Reorder 
 into order. Habits are visible only to their owner (admins included) and are part of the JSON
 export.
 
+## Dusk and Dawn
+
+The menu has two halves of the day. **Dusk** (`/habits`) holds the habit tracker (Today and
+Mirror) and the **Diary**; **Dawn** (`/journal`) is the Dream Journal.
+
+## Diary
+
+The Diary tab on Dusk (`/habits?tab=diary`; old `/thoughts` links redirect there) is a private notebook for waking life: thoughts, reading notes, ideas and
+reflections, kept apart from dreams so they never show up in the journal, stats, feed or
+leaderboard. It looks and works like the Dream Journal: a dated timeline grouped by month,
+search, a filter by kind (Thought, Reading, Idea, Reflection), tags, voice typing and autosaved
+drafts. Thoughts are visible only to their writer, admins included.
+
 ## Admins and moderation
 
 Admins can hide shared dreams from the feed, delete any comment, reset offensive display names,

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Route, BrowserRouter, Routes } from 'react-router-dom'
+import { Navigate, Route, BrowserRouter, Routes } from 'react-router-dom'
 import NavBar from './layout/NavBar'
 import PageShell from './layout/PageShell'
 import Home from './routes/Home'
@@ -26,6 +26,8 @@ const DreamerPage = lazy(() => import('./routes/dreamers/DreamerPage'))
 const AdminPage = lazy(() => import('./routes/admin/AdminPage'))
 const HabitsPage = lazy(() => import('./routes/habits/HabitsPage'))
 const LucidGuidePage = lazy(() => import('./routes/guide/LucidGuidePage'))
+const NewThoughtPage = lazy(() => import('./routes/thoughts/NewThoughtPage'))
+const ThoughtDetailPage = lazy(() => import('./routes/thoughts/ThoughtDetailPage'))
 
 function App() {
   return (
@@ -67,6 +69,24 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DreamJournalPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* The diary moved into a tab on the Dusk page; old links still find it. */}
+              <Route path="/thoughts" element={<Navigate to="/habits?tab=diary" replace />} />
+              <Route
+                path="/thoughts/new"
+                element={
+                  <ProtectedRoute>
+                    <NewThoughtPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/thoughts/:id"
+                element={
+                  <ProtectedRoute>
+                    <ThoughtDetailPage />
                   </ProtectedRoute>
                 }
               />

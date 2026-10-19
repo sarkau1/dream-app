@@ -10,6 +10,8 @@ export interface CalendarDay {
   day: string
   dreams: number
   lucid: boolean
+  /** Logged as "nothing recalled" with no dream that night (see lib/blankNights). */
+  blank: boolean
   /** After today: an empty slot that pads out the current week. */
   future: boolean
 }
@@ -54,22 +56,36 @@ function streaks(days: string[], today: string) {
   return { longest, current: alive ? run : 0 }
 }
 
-function calendarWeeks(counts: Map<string, number>, lucidDays: Set<string>, today: string) {
+function calendarWeeks(
+  counts: Map<string, number>,
+  lucidDays: Set<string>,
+  blankNights: ReadonlySet<string>,
+  today: string,
+) {
   const start = addDays(today, -weekdayIndex(today) - 7 * (CALENDAR_WEEKS - 1))
   const weeks: CalendarDay[][] = []
   for (let week = 0; week < CALENDAR_WEEKS; week++) {
     const days: CalendarDay[] = []
     for (let weekday = 0; weekday < 7; weekday++) {
       const day = addDays(start, week * 7 + weekday)
-      days.push({ day, dreams: counts.get(day) ?? 0, lucid: lucidDays.has(day), future: day > today })
+      const dreams = counts.get(day) ?? 0
+      const blank = dreams === 0 && blankNights.has(day)
+      days.push({ day, dreams, lucid: lucidDays.has(day), blank, future: day > today })
     }
     weeks.push(days)
   }
   return weeks
 }
 
-/** Everything the Progress page shows, derived from the user's own dreams. */
-export function progressFromDreams(dreams: ProgressDream[], today: string): Progress {
+/**
+ * Everything the Progress page shows, derived from the user's own dreams. Blank nights only mark
+ * the calendar: streaks and milestones count nights a dream was remembered.
+ */
+export function progressFromDreams(
+  dreams: ProgressDream[],
+  today: string,
+  blankNights: ReadonlySet<string> = new Set(),
+): Progress {
   // Dreams dated in the future (a mistyped date) would otherwise stretch a streak ahead of today.
   const past = dreams.filter((dream) => dream.dreamtOn <= today)
 
@@ -119,7 +135,7 @@ export function progressFromDreams(dreams: ProgressDream[], today: string): Prog
     currentStreak: current,
     longestStreak: longest,
     loggedToday: counts.has(today),
-    calendar: calendarWeeks(counts, lucidDays, today),
+    calendar: calendarWeeks(counts, lucidDays, blankNights, today),
     moods,
     topSigns,
     milestones,

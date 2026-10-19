@@ -39,7 +39,7 @@ function mostCommon(values: string[]): string | null {
 }
 
 export default function DreamJournalPage() {
-  useDocumentTitle('Journal')
+  useDocumentTitle('Dawn')
   const { myDreams, loadingMyDreams, myDreamsError, searchMyDreamBodies } = useDreamPosts()
   // ?q= prefills the search, e.g. when a symbol is clicked in the Dream Web.
   const [searchParams] = useSearchParams()

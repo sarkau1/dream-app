@@ -789,6 +789,94 @@ grant update (name, emoji, days, sort_order, archived_on) on public.habits to au
 grant select, delete on public.habit_checks to authenticated;
 grant insert (habit_id, user_id, day) on public.habit_checks to authenticated;
 
+-- Thoughts: the waking-life notebook (thoughts, reading notes, ideas), kept apart from dreams so
+-- they never show up in the dream journal, stats, feed or leaderboard. Private to their writer,
+-- admins included. Mirror the limits in src/types/thought.ts.
+create table if not exists public.thoughts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  title text not null,
+  body text not null,
+  kind text,
+  tags text[] not null default '{}',
+  written_on date not null default current_date,
+  created_at timestamptz not null default now(),
+  constraint thoughts_title_length check (char_length(title) between 1 and 200),
+  constraint thoughts_body_length check (char_length(body) between 1 and 20000),
+  constraint thoughts_kind_known check (kind is null or kind in ('Thought', 'Reading', 'Idea', 'Reflection')),
+  constraint thoughts_tags_count check (cardinality(tags) <= 30),
+  -- A day of slack for timezones, since the server's date is UTC.
+  constraint thoughts_written_on_not_future check (written_on <= current_date + 1)
+);
+
+create index if not exists thoughts_user_idx on public.thoughts (user_id, written_on desc, created_at desc);
+
+alter table public.thoughts enable row level security;
+
+drop policy if exists "Users can read their own thoughts" on public.thoughts;
+create policy "Users can read their own thoughts"
+  on public.thoughts for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can write their own thoughts" on public.thoughts;
+create policy "Users can write their own thoughts"
+  on public.thoughts for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can edit their own thoughts" on public.thoughts;
+create policy "Users can edit their own thoughts"
+  on public.thoughts for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own thoughts" on public.thoughts;
+create policy "Users can delete their own thoughts"
+  on public.thoughts for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+revoke insert, update on public.thoughts from authenticated;
+grant select, delete on public.thoughts to authenticated;
+grant insert (user_id, title, body, kind, tags, written_on) on public.thoughts to authenticated;
+grant update (title, body, kind, tags, written_on) on public.thoughts to authenticated;
+
+-- Blank nights: mornings the dreamer checked in but remembered no dream. Private to the dreamer,
+-- one per night, and never a dream: they show on the Progress calendar but don't count towards
+-- recall streaks or milestones.
+create table if not exists public.blank_nights (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  night date not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, night),
+  constraint blank_nights_not_future check (night <= current_date + 1)
+);
+
+alter table public.blank_nights enable row level security;
+
+drop policy if exists "Users can read their own blank nights" on public.blank_nights;
+create policy "Users can read their own blank nights"
+  on public.blank_nights for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can add their own blank nights" on public.blank_nights;
+create policy "Users can add their own blank nights"
+  on public.blank_nights for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can remove their own blank nights" on public.blank_nights;
+create policy "Users can remove their own blank nights"
+  on public.blank_nights for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+grant select, delete on public.blank_nights to authenticated;
+grant insert (user_id, night) on public.blank_nights to authenticated;
+
 -- Dream pictures: a private bucket, one folder per dreamer ("<user id>/<file>"). Dreamers add
 -- and remove files only in their own folder. A picture can be seen by its dreamer, and by anyone
 -- who can see a dream pointing at it: the dreams policies above decide that, so a private
